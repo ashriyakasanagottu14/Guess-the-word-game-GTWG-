@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Registration - GTW Game</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="user-register-styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="login-card">
+            <h1>Create Account</h1>
+            <p class="subtitle">Join the Guess The Word game!</p>
+            
+            <form id="userRegisterForm">
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input 
+                        type="email" 
+                        id="email" 
+                        name="email" 
+                        placeholder="Enter your email address"
+                        required
+                    >
+                    <small style="color: #666; font-size: 0.9em;">Your username will be the part before @ in your email</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input 
+                        type="text" 
+                        id="username" 
+                        name="username" 
+                        placeholder="Your username (auto-generated from email)"
+                        readonly
+                        style="background-color: #f5f5f5;"
+                    >
+                    <small style="color: #666; font-size: 0.9em;">This will be used for login</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        name="password" 
+                        placeholder="Create a password"
+                        required
+                    >
+                    <div class="password-requirements">
+                        <small>Password must contain:</small>
+                        <ul>
+                            <li id="length">At least 8 characters</li>
+                            <li id="uppercase">At least one uppercase letter</li>
+                            <li id="lowercase">At least one lowercase letter</li>
+                            <li id="number">At least one number</li>
+                            <li id="special">At least one special character</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm Password</label>
+                    <input 
+                        type="password" 
+                        id="confirmPassword" 
+                        name="confirmPassword" 
+                        placeholder="Confirm your password"
+                        required
+                    >
+                </div>
+                
+                <button type="submit" class="btn-register" id="registerButton">Create Account</button>
+            </form>
+            
+            <a href="user-login.html" class="back-link">← Already have an account? Login</a>
+        </div>
+    </div>
+
+    <script src="api.js"></script>
+    <script>
+        document.getElementById('userRegisterForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value.trim();
+            const confirmPassword = document.getElementById('confirmPassword').value.trim();
+            
+            // Generate username from email (part before @)
+            const username = email.split('@')[0];
+            
+            // Update the username field to show the generated username
+            document.getElementById('username').value = username;
+            const submitBtn = document.querySelector('.submit-btn');
+            const originalBtnText = submitBtn.textContent;
+            
+            // Clear previous errors
+            const existingError = document.querySelector('.error-message');
+            if (existingError) {
+                existingError.remove();
+            }
+            
+            // Validation
+            if (!email) {
+                showError('Please enter your email address');
+                return;
+            }
+            
+            if (!isValidEmail(email)) {
+                showError('Please enter a valid email address');
+                return;
+            }
+            
+            if (!password) {
+                showError('Please enter a password');
+                return;
+            }
+            
+            if (!isPasswordValid(password)) {
+                showError('Password does not meet the requirements');
+                return;
+            }
+            
+            if (password !== confirmPassword) {
+                showError('Passwords do not match');
+                return;
+            }
+            
+            // Show loading state
+            submitBtn.textContent = 'Creating Account...';
+            submitBtn.disabled = true;
+            
+            try {
+                const response = await api.registerUser(username, password);
+                
+                // Show success message with username
+                showSuccessMessage(`Account created successfully!\n\nYour username is: ${username}\nPlease use this username to login.`);
+                
+                // Redirect to game after 3 seconds
+                setTimeout(() => {
+                    window.location.href = 'game.html';
+                }, 3000);
+            } catch (error) {
+                // Show user-friendly error message
+                const errorMessage = error.userMessage || error.message || 'Registration failed. Please try again.';
+                showError(errorMessage);
+                
+                // Reset button
+                submitBtn.textContent = originalBtnText;
+                submitBtn.disabled = false;
+            }
+        });
+        
+        function isValidEmail(email) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return emailRegex.test(email);
+        }
+        
+        function isPasswordValid(password) {
+            const requirements = {
+                length: password.length >= 8,
+                uppercase: /[A-Z]/.test(password),
+                lowercase: /[a-z]/.test(password),
+                number: /\d/.test(password),
+                special: /[!@#$%^&*(),.?":{}|<>]/.test(password)
+            };
+            
+            // Update UI to show which requirements are met
+            Object.keys(requirements).forEach(key => {
+                const element = document.getElementById(key);
+                if (element) {
+                    if (requirements[key]) {
+                        element.classList.add('valid');
+                    } else {
+                        element.classList.remove('valid');
+                    }
+                }
+            });
+            
+            return Object.values(requirements).every(req => req);
+        }
+        
+        function showError(message) {
+            // Remove existing error messages
+            const existingError = document.querySelector('.error-message');
+            if (existingError) {
+                existingError.remove();
+            }
+            
+            // Create and show error message with enhanced red styling
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.textContent = message;
+            errorDiv.style.cssText = `
+                color: #dc2626;
+                background-color: #fef2f2;
+                border: 2px solid #dc2626;
+                border-radius: 8px;
+                padding: 12px 16px;
+                margin-bottom: 20px;
+                text-align: center;
+                font-size: 16px;
+                font-weight: 600;
+                box-shadow: 0 4px 6px -1px rgba(220, 38, 38, 0.1);
+                animation: shake 0.5s ease-in-out;
+            `;
+            
+            // Add shake animation for better visibility
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes shake {
+                    0%, 100% { transform: translateX(0); }
+                    25% { transform: translateX(-5px); }
+                    75% { transform: translateX(5px); }
+                }
+            `;
+            document.head.appendChild(style);
+            
+            const form = document.getElementById('userRegisterForm');
+            form.parentNode.insertBefore(errorDiv, form);
+            
+            // Auto-remove after 6 seconds
+            setTimeout(() => {
+                if (errorDiv.parentNode) {
+                    errorDiv.remove();
+                }
+            }, 6000);
+        }
+        
+        function showSuccessMessage(message) {
+            // Remove existing messages
+            const existingError = document.querySelector('.error-message');
+            const existingSuccess = document.querySelector('.success-message');
+            if (existingError) existingError.remove();
+            if (existingSuccess) existingSuccess.remove();
+            
+            // Create and show success message
+            const successDiv = document.createElement('div');
+            successDiv.className = 'success-message';
+            successDiv.textContent = message;
+            successDiv.style.cssText = `
+                color: #27ae60;
+                background-color: #eafaf1;
+                border: 1px solid #27ae60;
+                border-radius: 5px;
+                padding: 15px;
+                margin-bottom: 15px;
+                text-align: center;
+                font-size: 16px;
+                font-weight: bold;
+            `;
+            
+            const form = document.getElementById('userRegisterForm');
+            form.parentNode.insertBefore(successDiv, form);
+        }
+        
+        // Real-time username generation from email
+        document.getElementById('email').addEventListener('input', function() {
+            const email = this.value;
+            const usernameField = document.getElementById('username');
+            
+            if (email && email.includes('@')) {
+                const username = email.split('@')[0];
+                usernameField.value = username;
+            } else {
+                usernameField.value = '';
+            }
+            
+            if (email && !isValidEmail(email)) {
+                this.classList.add('error');
+                this.classList.remove('success');
+            } else if (email && isValidEmail(email)) {
+                this.classList.add('success');
+                this.classList.remove('error');
+            } else {
+                this.classList.remove('error', 'success');
+            }
+        });
+        
+        // Real-time password validation
+        document.getElementById('password').addEventListener('input', function() {
+            const password = this.value;
+            isPasswordValid(password);
+            
+            // Update password field styling
+            if (password && isPasswordValid(password)) {
+                this.classList.add('success');
+                this.classList.remove('error');
+            } else if (password) {
+                this.classList.add('error');
+                this.classList.remove('success');
+            } else {
+                this.classList.remove('error', 'success');
+            }
+        });
+        
+        // Real-time confirm password validation
+        document.getElementById('confirmPassword').addEventListener('input', function() {
+            const password = document.getElementById('password').value;
+            const confirmPassword = this.value;
+            
+            if (confirmPassword && password !== confirmPassword) {
+                this.classList.add('error');
+                this.classList.remove('success');
+            } else if (confirmPassword && password === confirmPassword) {
+                this.classList.add('success');
+                this.classList.remove('error');
+            } else {
+                this.classList.remove('error', 'success');
+            }
+        });
+    </script>
+</body>
+</html>

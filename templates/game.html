@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guess The Word</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="game-styles.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #8b7355 0%, #a68b5b 50%, #b8a082 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .game-container {
+            background: rgba(255, 253, 250, 0.98);
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            max-width: 500px;
+            width: 100%;
+            margin: 20px auto;
+        }
+        
+        .game-title {
+            color: #8b7355;
+            font-size: 2.2rem;
+            margin-bottom: 20px;
+            text-align: center;
+            text-shadow: 2px 2px 4px rgba(139, 115, 85, 0.1);
+        }
+        
+        .game-board {
+            display: grid;
+            grid-template-rows: repeat(5, 1fr);
+            grid-gap: 8px;
+            margin-bottom: 30px;
+        }
+        
+        .row {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            grid-gap: 8px;
+        }
+        
+        .tile {
+            aspect-ratio: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+            font-weight: bold;
+            color: #6b5b47;
+            background-color: #f5f1eb;
+            border: 2px solid #d9d0c1;
+            border-radius: 8px;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+        }
+        
+        .tile.filled {
+            border-color: #a68b5b;
+            animation: pop 0.1s ease;
+        }
+        
+        @keyframes pop {
+            0% { transform: scale(0.9); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .keyboard {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 20px;
+        }
+        
+        .keyboard-row {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+            width: 100%;
+        }
+        
+        .keyboard {
+            margin: 30px auto 50px;
+            padding: 15px;
+            background: #f0f0f0;  /* Light gray background */
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .key {
+            flex: 1;
+            min-width: 30px;
+            height: 50px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.9);
+            border: 2px solid #d9d0c1;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #6b5b47;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            text-transform: uppercase;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .key.wide {
+            flex: 1.5;
+            min-width: 60px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            padding: 0 10px;
+        }
+        
+        .key.wide.submit {
+            background: linear-gradient(135deg, #b8a082 0%, #a68b5b 100%);
+            color: white;
+            border-color: #a68b5b;
+            justify-content: center;
+            margin-top: 5px;
+        }
+        
+        .key:active {
+            transform: scale(0.93);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+        
+        .key.correct {
+            background-color: #8b7355;
+            border-color: #7a6449;
+            color: white;
+        }
+        
+        .key.present {
+            background-color: #b8a082;
+            border-color: #a89076;
+            color: white;
+        }
+        
+        .key.absent {
+            background-color: #e0d9ce;
+            border-color: #d0c9be;
+            color: #b8b0a5;
+        }
+        
+        .message {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 500;
+            display: none;
+        }
+        
+        .message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        @media (max-width: 500px) {
+            .game-container {
+                padding: 15px 10px;
+                margin: 10px;
+                border-radius: 10px;
+            }
+            
+            .tile {
+                font-size: 1.8rem;
+            }
+            
+            .key {
+                height: 45px;
+                min-width: 25px;
+                font-size: 0.9rem;
+                padding: 0 5px;
+            }
+            
+            .key.wide {
+                min-width: 40px;
+                font-size: 0.85rem;
+                padding: 0 5px;
+            }
+            
+            .keyboard {
+                padding: 10px 5px;
+                margin: 20px 10px 40px;
+                max-width: calc(100% - 20px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="#">Guess The Word</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item" id="userInfo">
+                        <!-- User info will be dynamically inserted here -->
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <div class="game-container">
+            <h1 class="game-title">Guess The Word</h1>
+            
+            <!-- Message Area -->
+            <div id="message" class="alert alert-dismissible fade" role="alert">
+                <span id="messageText"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            
+            <!-- Game Board -->
+            <div class="game-board" id="gameBoard">
+                <!-- Game grid will be generated by JavaScript -->
+            </div>
+            
+            <!-- Virtual Keyboard -->
+            <div class="keyboard">
+                <!-- First Row: QWERTYUIOP -->
+                <div class="keyboard-row">
+                    <div class="key" data-key="q">q</div>
+                    <div class="key" data-key="w">w</div>
+                    <div class="key" data-key="e">e</div>
+                    <div class="key" data-key="r">r</div>
+                    <div class="key" data-key="t">t</div>
+                    <div class="key" data-key="y">y</div>
+                    <div class="key" data-key="u">u</div>
+                    <div class="key" data-key="i">i</div>
+                    <div class="key" data-key="o">o</div>
+                    <div class="key" data-key="p">p</div>
+                </div>
+                
+                <!-- Second Row: ASDFGHJKL -->
+                <div class="keyboard-row">
+                    <div class="key" data-key="a">a</div>
+                    <div class="key" data-key="s">s</div>
+                    <div class="key" data-key="d">d</div>
+                    <div class="key" data-key="f">f</div>
+                    <div class="key" data-key="g">g</div>
+                    <div class="key" data-key="h">h</div>
+                    <div class="key" data-key="j">j</div>
+                    <div class="key" data-key="k">k</div>
+                    <div class="key" data-key="l">l</div>
+                </div>
+                
+                <!-- Third Row: ZXCVBNM + Backspace -->
+                <div class="keyboard-row">
+                    <div class="key" data-key="z">z</div>
+                    <div class="key" data-key="x">x</div>
+                    <div class="key" data-key="c">c</div>
+                    <div class="key" data-key="v">v</div>
+                    <div class="key" data-key="b">b</div>
+                    <div class="key" data-key="n">n</div>
+                    <div class="key" data-key="m">m</div>
+                    <div class="key wide" id="backspace">⌫</div>
+                </div>
+                
+                <!-- Fourth Row: Submit Button -->
+                <div class="keyboard-row">
+                    <div class="key wide submit" id="submit">Submit</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Script -->
+    <script>
+        // Game state
+        let currentRow = 0;
+        let currentTile = 0;
+        let gameOver = false;
+        let maxAttempts = 5;
+        
+        // Initialize the game board
+        function initializeBoard() {
+            const gameBoard = document.getElementById('gameBoard');
+            gameBoard.innerHTML = '';
+            
+            // Create 5 rows (matching maxAttempts)
+            for (let i = 0; i < maxAttempts; i++) {
+                const row = document.createElement('div');
+                row.className = 'row';
+                
+                // Create 5 tiles per row
+                for (let j = 0; j < 5; j++) {
+                    const tile = document.createElement('div');
+                    tile.className = 'tile';
+                    tile.setAttribute('data-row', i);
+                    tile.setAttribute('data-col', j);
+                    row.appendChild(tile);
+                }
+                
+                gameBoard.appendChild(row);
+            }
+        }
+        
+        // Start a new game
+        async function startNewGame() {
+            try {
+                const response = await fetch('/api/new-game', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    currentRow = 0;
+                    currentTile = 0;
+                    gameOver = false;
+                    maxAttempts = data.max_attempts;
+                    
+                    // Reset the board
+                    initializeBoard();
+                    
+                    // Reset keyboard
+                    document.querySelectorAll('.key').forEach(key => {
+                        key.className = key.classList.contains('wide') ? 'key wide' : 'key';
+                        if (key.classList.contains('submit')) {
+                            key.classList.add('submit');
+                        }
+                    });
+                    
+                    showMessage(data.message, 'success');
+                } else {
+                    showMessage(data.message, 'error');
+                }
+            } catch (error) {
+                console.error('Error starting new game:', error);
+                showMessage('Error starting new game', 'error');
+            }
+        }
+        
+        // Handle keyboard input
+        function handleKeyPress(key) {
+            console.log('Key pressed:', key, 'Current tile:', currentTile, 'Game over:', gameOver);
+            
+            if (gameOver) return;
+            
+            // Handle letter input
+            if (/^[A-Z]$/.test(key) && currentTile < 5) {
+                const tile = document.querySelector(`.tile[data-row="${currentRow}"][data-col="${currentTile}"]`);
+                if (tile) {
+                    tile.textContent = key;
+                    tile.classList.add('filled');
+                    currentTile++;
+                }
+            }
+            // Handle backspace
+            else if (key === 'Backspace' && currentTile > 0) {
+                currentTile--;
+                const tile = document.querySelector(`.tile[data-row="${currentRow}"][data-col="${currentTile}"]`);
+                if (tile) {
+                    tile.textContent = '';
+                    tile.className = 'tile';
+                }
+            }
+            // Handle enter/submit
+            else if (key === 'Enter' && currentTile === 5) {
+                console.log('Submitting guess...');
+                submitGuess();
+            } else if (key === 'Enter' && currentTile < 5) {
+                console.log('Need 5 letters to submit. Current:', currentTile);
+                showMessage('Please enter a 5-letter word', 'error');
+            }
+        }
+        
+        // Submit the current guess to the backend
+        async function submitGuess() {
+            console.log('submitGuess called');
+            const row = document.querySelectorAll(`.row`)[currentRow];
+            const tiles = row.querySelectorAll('.tile');
+            let guess = '';
+            
+            // Get the current guess
+            tiles.forEach(tile => {
+                guess += tile.textContent;
+            });
+            
+            console.log('Guess collected:', guess, 'Length:', guess.length);
+            
+            if (guess.length !== 5) {
+                showMessage('Please enter a 5-letter word', 'error');
+                return;
+            }
+            
+            try {
+                console.log('Sending request to /api/guess with:', guess);
+                const response = await fetch('/api/guess', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ guess: guess })
+                });
+                
+                console.log('Response status:', response.status);
+                const data = await response.json();
+                console.log('Response data:', data);
+                
+                if (data.success) {
+                    // Apply feedback to tiles and keyboard
+                    applyFeedback(tiles, data.feedback, guess);
+                    
+                    if (data.game_over) {
+                        gameOver = true;
+                        showMessage(data.message, data.won ? 'success' : 'error');
+                        
+                        setTimeout(() => {
+                            if (confirm(data.message + ' Play again?')) {
+                                startNewGame();
+                            }
+                        }, 2000);
+                    } else {
+                        // Move to next row
+                        currentRow++;
+                        currentTile = 0;
+                    }
+                } else {
+                    showMessage(data.message, 'error');
+                    shakeRow(currentRow);
+                }
+            } catch (error) {
+                console.error('Error submitting guess:', error);
+                showMessage('Error submitting guess', 'error');
+                shakeRow(currentRow);
+            }
+        }
+        
+        // Apply feedback from the backend
+        function applyFeedback(tiles, feedback, guess) {
+            for (let i = 0; i < 5; i++) {
+                const letter = guess[i];
+                const feedbackType = feedback[i];
+                
+                // Apply feedback to tile
+                if (feedbackType === 'G') {
+                    tiles[i].classList.add('correct');
+                    updateKeyboardState(letter, 'correct');
+                } else if (feedbackType === 'O') {
+                    tiles[i].classList.add('present');
+                    updateKeyboardState(letter, 'present');
+                } else if (feedbackType === 'X') {
+                    tiles[i].classList.add('absent');
+                    updateKeyboardState(letter, 'absent');
+                }
+            }
+        }
+        
+        // Update the keyboard state based on the current guess
+        function updateKeyboardState(letter, state) {
+            const key = document.querySelector(`.key[data-key="${letter}"]`);
+            if (key) {
+                // Only update if the new state is better than the current one
+                if (!key.classList.contains('correct')) {
+                    if (state === 'correct' || !key.classList.contains('present')) {
+                        key.className = 'key';
+                        key.classList.add(state);
+                    }
+                }
+            }
+        }
+        
+        // Show a message to the user
+        function showMessage(message, type) {
+            const messageDiv = document.getElementById('message');
+            const messageText = document.getElementById('messageText');
+            if (messageDiv && messageText) {
+                messageText.textContent = message;
+                messageDiv.className = `alert alert-${type} alert-dismissible fade show`;
+                messageDiv.style.display = 'block';
+                
+                // Hide the message after 3 seconds
+                setTimeout(() => {
+                    messageDiv.style.display = 'none';
+                }, 3000);
+            }
+        }
+        
+        // Shake the current row to indicate an invalid word
+        function shakeRow(rowIndex) {
+            const row = document.querySelectorAll('.row')[rowIndex];
+            if (row) {
+                row.style.animation = 'shake 0.5s';
+                
+                // Remove the animation after it completes
+                setTimeout(() => {
+                    row.style.animation = '';
+                }, 500);
+            }
+        }
+        
+        // Add shake animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes shake {
+                0%, 100% { transform: translateX(0); }
+                25% { transform: translateX(-5px); }
+                75% { transform: translateX(5px); }
+            }
+            
+            .tile.correct {
+                background-color: #6aaa64;
+                color: white;
+                border-color: #6aaa64;
+            }
+            
+            .tile.present {
+                background-color: #c9b458;
+                color: white;
+                border-color: #c9b458;
+            }
+            
+            .tile.absent {
+                background-color: #787c7e;
+                color: white;
+                border-color: #787c7e;
+            }
+            
+            .key.correct {
+                background-color: #6aaa64;
+                color: white;
+                border-color: #6aaa64;
+            }
+            
+            .key.present {
+                background-color: #c9b458;
+                color: white;
+                border-color: #c9b458;
+            }
+            
+            .key.absent {
+                background-color: #787c7e;
+                color: white;
+                border-color: #787c7e;
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // Initialize the game when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            // Start a new game
+            startNewGame();
+            
+            // Add click event listeners to keyboard keys
+            document.querySelectorAll('.key').forEach(key => {
+                key.addEventListener('click', () => {
+                    const keyValue = key.getAttribute('data-key');
+                    if (keyValue) {
+                        handleKeyPress(keyValue.toUpperCase());
+                    } else if (key.id === 'submit') {
+                        handleKeyPress('Enter');
+                    } else if (key.id === 'backspace') {
+                        handleKeyPress('Backspace');
+                    }
+                });
+            });
+            
+            // Add keyboard event listener
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === 'Backspace' || /^[a-zA-Z]$/.test(e.key)) {
+                    handleKeyPress(e.key.toUpperCase());
+                }
+            });
+            
+            // Add event listener for the back button
+            const backButton = document.getElementById('backButton');
+            if (backButton) {
+                backButton.addEventListener('click', function() {
+                    if (confirm('Are you sure you want to quit the game? Your progress will be lost.')) {
+                        window.location.href = '/';
+                    }
+                });
+            }
+        });
+    </script>
+    
+    <!-- Bootstrap JS Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
