@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GTW - Admin Login</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="admin-login-styles.css">
+    <script src="api.js"></script>
+</head>
+<body>
+    <div class="form-container">
+        <div class="admin-icon">🔐</div>
+        <h1 class="form-title">Admin Login</h1>
+        
+        <div class="error-message" id="errorMessage"></div>
+        
+        <form id="adminLoginForm">
+            <div class="form-group">
+                <label for="adminUsername" class="form-label">Username</label>
+                <input 
+                    type="text" 
+                    id="adminUsername" 
+                    name="adminUsername" 
+                    class="form-input" 
+                    placeholder="Enter admin username"
+                    required
+                    autocomplete="username"
+                >
+            </div>
+            
+            <div class="form-group">
+                <label for="adminPassword" class="form-label">Password</label>
+                <input 
+                    type="password" 
+                    id="adminPassword" 
+                    name="adminPassword" 
+                    class="form-input" 
+                    placeholder="Enter admin password"
+                    required
+                    autocomplete="current-password"
+                >
+            </div>
+            
+            <button type="submit" class="submit-btn">Login as Admin</button>
+        </form>
+        
+        <a href="index.html" class="back-link">← Back to Home</a>
+    </div>
+
+    <script>
+        async function adminLogin(username, password) {
+            const formData = new URLSearchParams();
+            formData.append('username', username);
+            formData.append('password', password);
+            formData.append('grant_type', 'password');
+
+            try {
+                const response = await fetch('http://localhost:8000/api/v1/admin/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'Accept': 'application/json'
+                    },
+                    body: formData.toString()
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Store admin data and token
+                    localStorage.setItem('adminToken', data.access_token);
+                    localStorage.setItem('adminLoggedIn', 'true');
+                    localStorage.setItem('userRole', 'ADMIN');
+                    return true;
+                } else {
+                    throw new Error(data.detail || 'Invalid credentials');
+                }
+            } catch (error) {
+                throw new Error(error.message || 'Login failed');
+            }
+        }
+
+        document.getElementById('adminLoginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('adminUsername').value.trim();
+            const password = document.getElementById('adminPassword').value.trim();
+            const errorMessage = document.getElementById('errorMessage');
+            const submitBtn = document.querySelector('.submit-btn');
+            const originalBtnText = submitBtn.textContent;
+            
+            // Clear previous errors
+            errorMessage.style.display = 'none';
+            
+            // Validation
+            if (!username) {
+                showError('Please enter username');
+                return;
+            }
+            
+            if (!password) {
+                showError('Please enter password');
+                return;
+            }
+            
+            // Show loading state
+            submitBtn.textContent = 'Logging in...';
+            submitBtn.disabled = true;
+            
+            try {
+                await adminLogin(username, password);
+                // Redirect to admin menu on success
+                window.location.href = 'admin-menu.html';
+            } catch (error) {
+                // Show error for invalid credentials
+                showError(error.message || 'Login failed. Please try again.');
+                document.getElementById('adminPassword').value = '';
+                document.getElementById('adminPassword').focus();
+            } finally {
+                // Reset button
+                submitBtn.textContent = originalBtnText;
+                submitBtn.disabled = false;
+            }
+        });
+
+        function showError(message) {
+            const errorMessage = document.getElementById('errorMessage');
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+            
+            setTimeout(() => {
+                errorMessage.style.display = 'none';
+            }, 5000);
+        }
+
+        document.querySelectorAll('.form-input').forEach(input => {
+            input.addEventListener('focus', function() {
+                this.parentElement.style.transform = 'scale(1.02)';
+            });
+            
+            input.addEventListener('blur', function() {
+                this.parentElement.style.transform = 'scale(1)';
+            });
+        });
+
+        document.getElementById('adminUsername').focus();
+    </script>
+</body>
+</html>

@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guess The Word</title>
+    <!-- Bootstrap CSS and JavaScript -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="game-styles.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="game-styles.css">
+</head>
+<body>
+                      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-logout" onclick="handleLogout()">Logout</button><!-- Navigation -->
+    <div class="game-nav">
+        <h1>Guess The Word</h1>
+        <div class="nav-buttons">
+            <button id="howToPlayBtn" class="btn nav-btn">How to Play?</button>
+            <button id="logoutBtn" class="btn nav-btn">Logout</button>
+        </div>
+    </div>
+    
+    <div class="game-container">
+        <div style="max-width: 600px; width: 100%;">
+            <!-- Game Board -->
+            <div class="game-board" id="game-board">
+                <!-- 5x5 grid will be added by JavaScript -->
+            </div>
+    
+    <!-- Message Area -->
+    <div class="message" id="message"></div>
+    
+    <!-- Virtual Keyboard -->
+    <div class="keyboard">
+                <!-- First Row: QWERTYUIOP -->
+                <div class="keyboard-row">
+                    <div class="key" data-key="q">q</div>
+                    <div class="key" data-key="w">w</div>
+                    <div class="key" data-key="e">e</div>
+                    <div class="key" data-key="r">r</div>
+                    <div class="key" data-key="t">t</div>
+                    <div class="key" data-key="y">y</div>
+                    <div class="key" data-key="u">u</div>
+                    <div class="key" data-key="i">i</div>
+                    <div class="key" data-key="o">o</div>
+                    <div class="key" data-key="p">p</div>
+                </div>
+                
+                <!-- Second Row: ASDFGHJKL -->
+                <div class="keyboard-row">
+                    <div class="key" data-key="a">a</div>
+                    <div class="key" data-key="s">s</div>
+                    <div class="key" data-key="d">d</div>
+                    <div class="key" data-key="f">f</div>
+                    <div class="key" data-key="g">g</div>
+                    <div class="key" data-key="h">h</div>
+                    <div class="key" data-key="j">j</div>
+                    <div class="key" data-key="k">k</div>
+                    <div class="key" data-key="l">l</div>
+                </div>
+                
+                <!-- Third Row: ZXCVBNM + Backspace -->
+                <div class="keyboard-row">
+                    <div class="key" data-key="z">z</div>
+                    <div class="key" data-key="x">x</div>
+                    <div class="key" data-key="c">c</div>
+                    <div class="key" data-key="v">v</div>
+                    <div class="key" data-key="b">b</div>
+                    <div class="key" data-key="n">n</div>
+                    <div class="key" data-key="m">m</div>
+                    <div class="key wide" id="backspace">⌫</div>
+                </div>
+                
+                <!-- Fourth Row: Submit Button -->
+                <div class="keyboard-row">
+                    <div class="key wide submit" id="submit">Submit</div>
+                </div>
+            </div>
+    </div>
+
+    <!-- Game Over Modal -->
+    <div class="game-over-overlay" id="gameOverOverlay" style="display: none;">
+        <div class="game-over-modal">
+            <div class="game-over-content">
+                <h2 id="gameOverTitle"></h2>
+                <p id="gameOverMessage"></p>
+                <button class="btn" onclick="startNewGame()">Play Again</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Script -->
+    <script>
+        // Word list from actual.py
+        const WORDS = [
+            "APPLE", "ANGEL", "BRAVE", "CRANE", "DOUBT", "QUART", "JUMBO", "MIXED", 
+            "GRASP", "ZEBRA", "PLATE", "SMILE", "GRAPE", "BRICK", "SAUCE", "ADIEU", 
+            "AROMA", "AUDIO", "PRIME", "VALID"
+        ];
+        
+        // Game state
+        let currentRow = 0;
+        let currentTile = 0;
+        let gameOver = false;
+        let maxAttempts = 5;
+        let targetWord = '';
+        
+        // Game logic from actual.py
+        function getFeedback(guess, target) {
+            const feedback = [];
+            const usedTarget = target.split('');
+            const usedGuess = guess.split('');
+            
+            // First pass: mark correct positions (green)
+            for (let i = 0; i < 5; i++) {
+                if (guess[i] === target[i]) {
+                    feedback[i] = "G";
+                    usedTarget[i] = null;
+                    usedGuess[i] = null;
+                } else {
+                    feedback[i] = null;
+                }
+            }
+
+            // Second pass: mark wrong positions (orange) and absent letters (grey)
+            for (let i = 0; i < 5; i++) {
+                if (feedback[i] === null && usedTarget.includes(usedGuess[i])) {
+                    feedback[i] = "O"; // Orange
+                    usedTarget[usedTarget.indexOf(usedGuess[i])] = null;
+                } else if (feedback[i] === null) {
+                    feedback[i] = "X"; // Grey
+                }
+            }
+            
+            return feedback;
+        }
+        
+        // Start a new game
+        async function startNewGame() {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = 'user-login.html';
+                return;
+            }
+
+            try {
+                const response = await fetch('http://localhost:8000/api/v1/game/start', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                console.log('Start game response status:', response.status);    
+
+                const data = await response.json();
+                if (response.ok) {
+                    localStorage.setItem('game_id', data.game_id);
+                    
+                    targetWord = WORDS[Math.floor(Math.random() * WORDS.length)];
+                    console.log('Target word:', targetWord); // For testing
+                    
+                    currentRow = 0;
+                    currentTile = 0;
+
+                    // Clear the board
+                    const tiles = document.querySelectorAll('.tile');
+                    tiles.forEach(tile => {
+                        tile.textContent = '';
+                        tile.classList.remove('correct', 'present', 'absent', 'filled');
+                    });
+
+                    // Reset game state
+                    gameOver = false;
+                    // guessedWords.length = 0;
+                } else {
+                    alert('Failed to start new game: ' + (data.detail || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error starting new game:', error);
+                alert('Failed to start new game. Please try again.');
+            }
+            gameOver = false;
+            
+            // Hide game over modal
+            hideGameOverModal();
+            
+            // Reset the board
+            initializeBoard();
+            
+            // Reset keyboard
+            document.querySelectorAll('.key').forEach(key => {
+                key.className = key.classList.contains('wide') ? 'key wide' : 'key';
+                if (key.classList.contains('submit')) {
+                    key.classList.add('submit');
+                }
+            });
+            
+            showMessage('New game started! Guess the 5-letter word.', 'success');
+        }
+        
+        // Initialize the game board
+        function initializeBoard() {
+            const gameBoard = document.getElementById('game-board');
+            gameBoard.innerHTML = '';
+            
+            // Create 5x5 grid
+            for (let row = 0; row < 5; row++) {
+                const rowElement = document.createElement('div');
+                rowElement.className = 'row';
+                rowElement.dataset.row = row;
+                
+                for (let col = 0; col < 5; col++) {
+                    const tile = document.createElement('div');
+                    tile.className = 'tile';
+                    tile.dataset.row = row;
+                    tile.dataset.col = col;
+                    tile.id = `tile-${row}-${col}`;
+                    rowElement.appendChild(tile);
+                }
+                
+                gameBoard.appendChild(rowElement);
+            }
+        }
+        
+        // Handle keyboard input
+        function handleKeyPress(key) {
+            if (gameOver) return;
+            
+            // Handle letter input
+            if (/^[A-Z]$/.test(key) && currentTile < 5) {
+                const tile = document.querySelector(`.tile[data-row="${currentRow}"][data-col="${currentTile}"]`);
+                if (tile) {
+                    tile.textContent = key;
+                    tile.classList.add('filled');
+                    currentTile++;
+                    // Enable submit button when 5 letters are typed
+                    if (currentTile === 5) {
+                        document.querySelector('.key.wide.submit').classList.add('active');
+                    }
+                }
+            }
+            // Handle backspace
+            else if (key === 'Backspace' && currentTile > 0) {
+                currentTile--;
+                const tile = document.querySelector(`.tile[data-row="${currentRow}"][data-col="${currentTile}"]`);
+                if (tile) {
+                    tile.textContent = '';
+                    tile.className = 'tile';
+                }
+                // Disable submit button when less than 5 letters
+                document.querySelector('.key.wide.submit').classList.remove('active');
+            }
+            // Handle enter/submit
+            else if (key === 'Enter' && currentTile === 5) {
+                submitGuess();
+            } else if (key === 'Enter' && currentTile < 5) {
+                showMessage('Please enter a 5-letter word', 'error');
+            }
+        }
+        
+        // Submit the current guess
+        async function submitGuess() {
+            const token = localStorage.getItem('token');
+            const gameId = localStorage.getItem('game_id');
+            
+            if (!token || !gameId) {
+                window.location.href = 'user-login.html';
+                return;
+            }
+
+            const row = document.querySelectorAll(`.row`)[currentRow];
+            const tiles = row.querySelectorAll('.tile');
+            let guess = '';
+            
+            // Get the current guess
+            tiles.forEach(tile => {
+                guess += tile.textContent;
+            });
+            
+            if (guess.length !== 5) {
+                showMessage('Please enter a 5-letter word', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('http://localhost:8000/api/v1/game/guess', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        game_id: gameId,
+                        guess: guess
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // Apply feedback from API response
+                    const feedback = data.feedback || getFeedback(guess, targetWord);
+                    applyFeedback(tiles, feedback, guess);
+                } else {
+                    showMessage(data.detail || 'Error submitting guess', 'error');
+                    return;
+                }
+            } catch (error) {
+                console.error('Error submitting guess:', error);
+                showMessage('Failed to submit guess. Please try again.', 'error');
+                return;
+            }
+            
+            // Check for win
+            if (guess === targetWord) {
+                gameOver = true;
+                setTimeout(() => {
+                    showGameOverModal('🎉 Congratulations!', 'You guessed the correct word!');
+                }, 1000);
+                return;
+            }
+            
+            // Move to next row
+            currentRow++;
+            currentTile = 0;
+            
+            // Check for game over
+            if (currentRow === maxAttempts) {
+                gameOver = true;
+                setTimeout(() => {
+                    showGameOverModal('😞 You Lost!', `The correct word was: ${targetWord}`);
+                }, 1000);
+            }
+        }
+        
+        // Apply feedback from the game logic
+        function applyFeedback(tiles, feedback, guess) {
+            for (let i = 0; i < 5; i++) {
+                const letter = guess[i];
+                const feedbackType = feedback[i];
+                
+                // Apply feedback to tile with animation delay
+                setTimeout(() => {
+                    if (feedbackType === 'G') {
+                        tiles[i].classList.add('correct');
+                        updateKeyboardState(letter, 'correct');
+                    } else if (feedbackType === 'O') {
+                        tiles[i].classList.add('present');
+                        updateKeyboardState(letter, 'present');
+                    } else if (feedbackType === 'X') {
+                        tiles[i].classList.add('absent');
+                        updateKeyboardState(letter, 'absent');
+                    }
+                }, i * 100); // Stagger the animation
+            }
+        }
+        
+        // Update the keyboard state based on the current guess
+        function updateKeyboardState(letter, state) {
+            const key = document.querySelector(`.key[data-key="${letter.toLowerCase()}"]`);
+            if (key) {
+                // Only update if the new state is better than the current one
+                if (!key.classList.contains('correct')) {
+                    if (state === 'correct' || !key.classList.contains('present')) {
+                        key.classList.remove('present', 'absent', 'correct');
+                        key.classList.add(state);
+                    }
+                }
+            }
+        }
+        
+        // Show a message to the user
+        function showMessage(message, type) {
+            const messageDiv = document.getElementById('message');
+            if (messageDiv) {
+                messageDiv.textContent = message;
+                messageDiv.className = `alert alert-${type} alert-dismissible fade show`;
+                messageDiv.style.display = 'block';
+                
+                // Hide the message after 3 seconds
+                setTimeout(() => {
+                    messageDiv.style.display = 'none';
+                }, 3000);
+            }
+        }
+        
+        // Show game over modal
+        function showGameOverModal(title, message) {
+            const overlay = document.getElementById('gameOverOverlay');
+            const titleElement = document.getElementById('gameOverTitle');
+            const messageElement = document.getElementById('gameOverMessage');
+            
+            if (overlay && titleElement && messageElement) {
+                titleElement.textContent = title;
+                messageElement.textContent = message;
+                overlay.style.display = 'flex';
+            }
+        }
+        
+        // Hide game over modal
+        function hideGameOverModal() {
+            const overlay = document.getElementById('gameOverOverlay');
+            if (overlay) {
+                overlay.style.display = 'none';
+            }
+        }
+        
+        // Shake the current row to indicate an invalid word
+        function shakeRow(rowIndex) {
+            const row = document.querySelectorAll('.row')[rowIndex];
+            if (row) {
+                row.style.animation = 'shake 0.5s';
+                
+                // Remove the animation after it completes
+                setTimeout(() => {
+                    row.style.animation = '';
+                }, 500);
+            }
+        }
+        
+        // Add shake animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes shake {
+                0%, 100% { transform: translateX(0); }
+                25% { transform: translateX(-5px); }
+                75% { transform: translateX(5px); }
+            }
+            
+            .tile.correct {
+                background-color: #6aaa64 !important;
+                color: white !important;
+                border-color: #6aaa64 !important;
+            }
+            
+            .tile.present {
+                background-color: #c9b458 !important;
+                color: white !important;
+                border-color: #c9b458 !important;
+            }
+            
+            .tile.absent {
+                background-color: #787c7e !important;
+                color: white !important;
+                border-color: #787c7e !important;
+            }
+            
+            .key.correct {
+                background-color: #6aaa64 !important;
+                color: white !important;
+                border-color: #6aaa64 !important;
+            }
+            
+            .key.present {
+                background-color: #c9b458 !important;
+                color: white !important;
+                border-color: #c9b458 !important;
+            }
+            
+            .key.absent {
+                background-color: #787c7e !important;
+                color: white !important;
+                border-color: #787c7e !important;
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // Initialize the game when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize modals
+            const howToPlayModal = new bootstrap.Modal(document.getElementById('howToPlayModal'));
+            const logoutConfirmModal = new bootstrap.Modal(document.getElementById('logoutConfirmModal'));
+
+            // Function to clean up modal effects
+            function cleanupModalEffects() {
+                document.body.classList.remove('modal-open');
+                document.body.style.overflow = '';
+                document.body.style.paddingRight = '';
+                const modalBackdrops = document.getElementsByClassName('modal-backdrop');
+                while(modalBackdrops.length > 0) {
+                    modalBackdrops[0].parentNode.removeChild(modalBackdrops[0]);
+                }
+            }
+
+            // Add event listeners for modal buttons
+            document.getElementById('howToPlayBtn').addEventListener('click', function() {
+                howToPlayModal.show();
+            });
+            
+            document.getElementById('logoutBtn').addEventListener('click', function() {
+                logoutConfirmModal.show();
+            });
+
+            // Add event listeners for modal cleanup
+            document.getElementById('howToPlayModal').addEventListener('hidden.bs.modal', function () {
+                cleanupModalEffects();
+            });
+
+            document.getElementById('logoutConfirmModal').addEventListener('hidden.bs.modal', function () {
+                cleanupModalEffects();
+            });
+
+            // Cleanup any existing modal effects on page load
+            cleanupModalEffects();
+
+            // Ensure submit button starts in inactive state
+            document.querySelector('.key.wide.submit')?.classList.remove('active');
+            
+            // Start a new game
+            startNewGame();
+            
+            // Add click event listeners to keyboard keys
+            document.querySelectorAll('.key').forEach(key => {
+                key.addEventListener('click', () => {
+                    const keyValue = key.getAttribute('data-key');
+                    if (keyValue) {
+                        handleKeyPress(keyValue.toUpperCase());
+                        key.classList.add('active');
+                        setTimeout(() => {
+                            key.classList.remove('active');
+                        }, 200);
+                    } else if (key.id === 'submit') {
+                        handleKeyPress('Enter');
+                        key.classList.add('active');
+                        setTimeout(() => {
+                            key.classList.remove('active');
+                        }, 200);
+                    } else if (key.id === 'backspace') {
+                        handleKeyPress('Backspace');
+                        key.classList.add('active');
+                        setTimeout(() => {
+                            key.classList.remove('active');
+                        }, 200);
+                    }
+                });
+
+                // Add touch feedback for mobile devices
+                key.addEventListener('touchstart', () => {
+                    key.classList.add('active');
+                });
+                key.addEventListener('touchend', () => {
+                    key.classList.remove('active');
+                });
+            });
+            
+            // Add keyboard event listener
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    handleKeyPress('Enter');
+                    document.querySelector('.key.wide.submit').classList.add('active');
+                    setTimeout(() => {
+                        document.querySelector('.key.wide.submit').classList.remove('active');
+                    }, 200);
+                } else if (e.key === 'Backspace') {
+                    handleKeyPress('Backspace');
+                    document.getElementById('backspace').classList.add('active');
+                    setTimeout(() => {
+                        document.getElementById('backspace').classList.remove('active');
+                    }, 200);
+                } else if (/^[a-zA-Z]$/.test(e.key)) {
+                    handleKeyPress(e.key.toUpperCase());
+                    const keyElement = document.querySelector(`.key[data-key="${e.key.toLowerCase()}"]`);
+                    if (keyElement) {
+                        keyElement.classList.add('active');
+                        setTimeout(() => {
+                            keyElement.classList.remove('active');
+                        }, 200);
+                    }
+                }
+            });
+            
+            // Add event listener for the back button
+            const backButton = document.getElementById('backButton');
+            if (backButton) {
+                backButton.addEventListener('click', function() {
+                    if (confirm('Are you sure you want to quit the game? Your progress will be lost.')) {
+                        window.location.href = 'user-dashboard.html';
+                    }
+                });
+            }
+            
+            // Add click event to close modal when clicking outside
+            const gameOverOverlay = document.getElementById('gameOverOverlay');
+            if (gameOverOverlay) {
+                gameOverOverlay.addEventListener('click', function(e) {
+                    if (e.target === gameOverOverlay) {
+                        hideGameOverModal();
+                    }
+                });
+            }
+        });
+    </script>
+    
+    <!-- How to Play Modal -->
+    <div class="modal fade" id="howToPlayModal" tabindex="-1" aria-labelledby="howToPlayModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content custom-modal">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="howToPlayModalLabel">How to Play</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <h6>Welcome to Guess The Word!</h6>
+                    
+                    <div class="mb-4">
+                        <h6>Game Objective:</h6>
+                        <p>Try to guess the secret 5-letter word in 5 attempts or less.</p>
+                    </div>
+
+                    <div class="mb-4">
+                        <h6>How to Play:</h6>
+                        <ol style="padding-left: 20px;">
+                            <li>Type any 5-letter word to start guessing</li>
+                            <li>Press 'Submit' or Enter key to submit your guess</li>
+                            <li>The colors will show how close your guess was</li>
+                            <li>Keep guessing until you find the word or run out of attempts</li>
+                        </ol>
+                    </div>
+
+                    <div class="mb-4">
+                        <h6>Color Guide:</h6>
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="color-block green"></div>
+                            <span>Green: Letter is in the correct spot</span>
+                        </div>
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="color-block yellow"></div>
+                            <span>Yellow: Letter is in the word but wrong spot</span>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <div class="color-block gray"></div>
+                            <span>Gray: Letter is not in the word</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <h6>Tips:</h6>
+                        <ul style="padding-left: 20px;">
+                            <li>Use the colored feedback to make better guesses</li>
+                            <li>Try to use common letters (E, A, R, I, O, T)</li>
+                            <li>Remember, the same letter can appear multiple times</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-close-modal" data-bs-dismiss="modal">Start Playing!</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logout Confirmation Modal -->
+    <div class="modal fade" id="logoutConfirmModal" tabindex="-1" aria-labelledby="logoutConfirmModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content custom-modal">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="logoutConfirmModalLabel">Confirm Logout</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to logout? Your game progress will be lost.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-cancel" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-logout" onclick="handleLogout()">Logout</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize the modal
+        const howToPlayModal = new bootstrap.Modal(document.getElementById('howToPlayModal'));
+        
+        // Add event listeners to the buttons
+        document.getElementById('howToPlayBtn').addEventListener('click', () => {
+            howToPlayModal.show();
+        });
+        
+        async function handleLogout() {
+            const token = localStorage.getItem('token');
+            if (token) {
+                try {
+                    const response = await fetch('http://localhost:8000/api/v1/game/logout', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    if (!response.ok) {
+                        console.error('Logout API failed:', await response.text());
+                    }
+                } catch (error) {
+                    console.error('Error during logout:', error);
+                } finally {
+                    // Always clear localStorage and redirect, regardless of API success
+                    localStorage.clear(); // This clears ALL items including token, game_id, etc.
+                    window.location.href = 'index.html';
+                }
+            } else {
+                // If no token, just clear storage and redirect
+                localStorage.clear();
+                window.location.href = 'index.html';
+            }
+            
+            // Redirect to index page
+            window.location.href = 'index.html';
+        }
+
+        document.getElementById('logoutBtn').addEventListener('click', function() {
+            // Show the logout confirmation modal
+            const confirmModal = new bootstrap.Modal(document.getElementById('logoutConfirmModal'));
+            confirmModal.show();
+        });
+    </script>
+</body>
+</html>

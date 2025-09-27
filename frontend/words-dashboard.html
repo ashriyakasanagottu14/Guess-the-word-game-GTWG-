@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Words Management - GTW Game</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .words-container {
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 2rem;
+            background-color: #fff;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .admin-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .words-title {
+            color: #8b7355;
+            margin-bottom: 2rem;
+            font-size: 2.5rem;
+        }
+
+        .action-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .action-btn {
+            padding: 1rem 2rem;
+            font-size: 1.1rem;
+            border: none;
+            border-radius: 8px;
+            background-color: #deb887;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .action-btn:hover {
+            background-color: #cd853f;
+            transform: translateY(-2px);
+        }
+
+        .words-list {
+            text-align: left;
+            margin: 2rem 0;
+            border: 1px solid #deb887;
+            border-radius: 8px;
+            padding: 1rem;
+            min-height: 200px;
+        }
+
+        .no-words {
+            text-align: center;
+            color: #666;
+            padding: 2rem;
+            font-style: italic;
+        }
+
+        .add-word-form {
+            max-width: 400px;
+            margin: 2rem auto;
+            text-align: left;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #8b7355;
+            font-weight: bold;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.8rem;
+            border: 2px solid #deb887;
+            border-radius: 6px;
+            font-size: 1.1rem;
+            text-transform: uppercase;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #cd853f;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 1rem;
+            background-color: #deb887;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .submit-btn:hover {
+            background-color: #cd853f;
+        }
+
+        .error-message {
+            color: #dc3545;
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+            display: none;
+        }
+
+        .back-link {
+            color: #8b7355;
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 2rem;
+            transition: color 0.3s ease;
+        }
+
+        .back-link:hover {
+            color: #cd853f;
+        }
+
+        .view {
+            display: none;
+        }
+
+        .view.active {
+            display: block;
+        }
+
+        /* Word list styles */
+        .word-item {
+            padding: 10px;
+            margin: 5px 0;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .word-text {
+            font-size: 1.1rem;
+            color: #333;
+        }
+
+        .loading-spinner {
+            display: none;
+            margin: 20px auto;
+        }
+    </style>
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+<body>
+    <script>
+        // API Base URL
+        const API_BASE_URL = 'http://localhost:8000/api/v1';
+
+        // Check admin authentication
+        document.addEventListener('DOMContentLoaded', function() {
+            const adminToken = localStorage.getItem('adminToken');
+            if (!adminToken) {
+                window.location.href = 'admin-login.html';
+                return;
+            }
+
+            // Add event listeners for buttons
+            document.getElementById('availableWordsBtn').addEventListener('click', function() {
+                document.getElementById('wordsListContainer').style.display = 'block';
+                document.getElementById('addWordContainer').style.display = 'none';
+                getWords();
+            });
+
+            document.getElementById('addWordBtn').addEventListener('click', function() {
+                document.getElementById('wordsListContainer').style.display = 'none';
+                document.getElementById('addWordContainer').style.display = 'block';
+            });
+
+            // Add form submit handler
+            document.getElementById('addWordForm').addEventListener('submit', postWords);
+
+            // By default, hide both containers (only buttons visible)
+            document.getElementById('wordsListContainer').style.display = 'none';
+            document.getElementById('addWordContainer').style.display = 'none';
+        });
+
+        // Get words from API
+        async function getWords() {
+            const wordsList = document.getElementById('wordsList');
+            const errorElement = document.getElementById('listError');
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/admin/words`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('adminToken')}`,
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Cannot get word details');
+                }
+
+                const words = await response.json();
+                
+                // Clear previous content
+                wordsList.innerHTML = '';
+                
+                if (words && words.length > 0) {
+                    words.forEach(word => {
+                        const wordElement = document.createElement('div');
+                        wordElement.className = 'word-item';
+                        wordElement.innerHTML = `
+                            <span class="word-text">${word.text}</span>
+                        `;
+                        wordsList.appendChild(wordElement);
+                    });
+                } else {
+                    wordsList.innerHTML = '<p>No words found</p>';
+                }
+                
+                errorElement.style.display = 'none';
+            } catch (error) {
+                console.error('Error fetching words:', error);
+                errorElement.textContent = error.message || 'Cannot get word details. Please try again later.';
+                errorElement.style.display = 'block';
+                wordsList.innerHTML = '';
+            }
+        }
+
+        // Add new word
+        async function postWords(event) {
+            event.preventDefault();
+            
+            const wordInput = document.getElementById('newWord');
+            const word = wordInput.value.trim().toUpperCase();
+            const errorElement = document.getElementById('addError');
+            const form = document.getElementById('addWordForm');
+            
+            if (!word) {
+                errorElement.textContent = 'Please enter a word';
+                errorElement.style.display = 'block';
+                return;
+            }
+
+            if (word.length !== 5 || !/^[A-Z]+$/.test(word)) {
+                errorElement.textContent = 'Word must be exactly 5 letters (A-Z)';
+                errorElement.style.display = 'block';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/admin/words`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('adminToken')}`,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        text: word,
+                        active: true 
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Failed to add word');
+                }
+
+                // Clear form and show success
+                form.reset();
+                errorElement.textContent = 'Word added successfully!';
+                errorElement.style.color = '#28a745';
+                errorElement.style.display = 'block';
+
+                // Refresh word list
+                getWords();
+
+                // Clear success message after 3 seconds
+                setTimeout(() => {
+                    errorElement.style.display = 'none';
+                    errorElement.style.color = '#dc3545'; // Reset to error color
+                }, 3000);
+
+            } catch (error) {
+                console.error('Error adding word:', error);
+                errorElement.textContent = error.message || 'Failed to add word. Please try again.';
+                errorElement.style.display = 'block';
+            }
+        }
+    </script>
+    <div class="words-container position-relative">
+        <div class="admin-icon">📝</div>
+        <h1 class="words-title">Words Management</h1>
+
+        <!-- Action Buttons (keep only one set) -->
+        <div class="action-buttons">
+            <button id="availableWordsBtn" class="action-btn">Available Words</button>
+            <button id="addWordBtn" class="action-btn">Add Word</button>
+        </div>
+
+        <!-- Word List Container -->
+        <div id="wordsListContainer" style="display: none; margin-top: 20px;">
+            <h2>Available Words</h2>
+            <div id="wordsList" class="mt-4">
+                <!-- Words will be listed here -->
+            </div>
+            <div id="listError" class="error-message"></div>
+        </div>
+
+        <!-- Add Word Form -->
+        <div id="addWordContainer" style="display: none; margin-top: 20px;">
+            <h2>Add New Word</h2>
+            <form id="addWordForm" class="mt-4">
+                <div class="mb-3">
+                    <input type="text" id="newWord" class="form-control" placeholder="Enter word (5 letters)" required pattern="[A-Za-z]{5}" maxlength="5">
+                    <div class="form-text">Word must be exactly 5 letters long</div>
+                </div>
+                <button type="submit" class="submit-btn">Add Word</button>
+            </form>
+            <div id="addError" class="error-message"></div>
+        </div>
+
+        <a href="admin-menu.html" class="back-link">← Back to Menu</a>
+    </div>
+
+    <script>
+        // Check if admin is logged in
+        if (!localStorage.getItem('adminLoggedIn')) {
+            alert('Access denied. Please login as admin first.');
+            window.location.href = 'admin-login.html';
+        }
+
+        // Show initial view (list)
+        showView('list');
+
+        function showView(viewName) {
+            // Hide all views
+            document.querySelectorAll('.view').forEach(view => {
+                view.classList.remove('active');
+            });
+
+            // Show selected view
+            document.getElementById(viewName + 'View').classList.add('active');
+        }
+
+        function handleAddWord(event) {
+            event.preventDefault();
+            
+            const wordInput = document.getElementById('newWord');
+            const word = wordInput.value.trim().toUpperCase();
+            const errorElement = document.getElementById('wordError');
+            
+            // Validate word
+            if (!/^[A-Z]{5}$/.test(word)) {
+                errorElement.textContent = 'Please enter exactly 5 letters (A-Z only)';
+                errorElement.style.display = 'block';
+                return;
+            }
+            
+            // Clear form and show success
+            alert('Word "' + word + '" would be added (backend not connected yet)');
+            wordInput.value = '';
+            errorElement.style.display = 'none';
+        }
+
+        // Input validation while typing
+        document.getElementById('newWord').addEventListener('input', function(e) {
+            this.value = this.value.replace(/[^A-Za-z]/g, '').toUpperCase();
+            const errorElement = document.getElementById('wordError');
+            
+            if (this.value.length > 0 && this.value.length !== 5) {
+                errorElement.textContent = 'Word must be exactly 5 letters';
+                errorElement.style.display = 'block';
+            } else if (!/^[A-Z]*$/.test(this.value)) {
+                errorElement.textContent = 'Only letters A-Z are allowed';
+                errorElement.style.display = 'block';
+            } else {
+                errorElement.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>

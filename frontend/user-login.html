@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GTW - User Login</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="admin-login-styles.css">
+    <script src="api.js"></script>
+    <style>
+        .user-icon {
+            font-size: 3rem;
+            color: #a68b5b;
+            margin-bottom: 20px;
+        }
+        .register-link {
+            margin-top: 20px;
+            color: #8b7355;
+            font-size: 0.95rem;
+        }
+        .register-link a {
+            color: #a68b5b;
+            font-weight: 600;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        .register-link a:hover {
+            color: #8b7355;
+            text-decoration: underline;
+        }
+        .username-note {
+            color: #a68b5b;
+            font-size: 0.85rem;
+            margin-top: 5px;
+            font-style: italic;
+        }
+        .forgot-password-link {
+            display: block;
+            text-align: right;
+            margin-top: 5px;
+            color: #a68b5b;
+            font-size: 0.9rem;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        .forgot-password-link:hover {
+            color: #8b7355;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <div class="user-icon">👤</div>
+        <h1 class="form-title">User Login</h1>
+        
+        <div class="error-message" id="errorMessage"></div>
+        
+        <form id="userLoginForm">
+            <div class="form-group">
+                <label for="username" class="form-label">Username</label>
+                <input 
+                    type="text" 
+                    id="username" 
+                    name="username" 
+                    class="form-input" 
+                    placeholder="Enter your username"
+                    required
+                    autocomplete="username"
+                >
+            </div>
+            
+            <div class="form-group">
+                <label for="password" class="form-label">Password</label>
+                <input 
+                    type="password" 
+                    id="password" 
+                    name="password" 
+                    class="form-input" 
+                    placeholder="Enter your password"
+                    required
+                    autocomplete="current-password"
+                >
+                <a href="forgot-password.html" class="forgot-password-link">Forgot Password?</a>
+            </div>
+            
+            <button onclick="UserLogin()" type="submit" class="submit-btn">Login</button>
+        </form>
+        
+        <p class="register-link">
+            Don't have an account? <a href="user-register.html">Create a new account</a>
+        </p>
+        <a href="index.html" class="back-link">← Back to Home</a>
+    </div>
+
+    <script>
+        async function UserLogin() {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+            const errorMessage = document.getElementById('errorMessage');
+            const submitBtn = document.querySelector('.submit-btn');
+            
+            // Clear previous errors
+            errorMessage.style.display = 'none';
+            
+            // Basic validation
+            if (!username || !password) {
+                showError('Please enter both username and password');
+                return;
+            }
+            
+            // Show loading state
+            submitBtn.textContent = 'Logging in...';
+            submitBtn.disabled = true;
+            
+            try {
+                const response = await fetch('http://localhost:8000/api/v1/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // Store user data and token
+                    localStorage.setItem('token', data.access_token);
+                    localStorage.setItem('username', username);
+                    
+                    // Call start API to get game_id
+                    try {
+                        const startResponse = await fetch('http://localhost:8000/api/v1/game/start', {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${data.access_token}`,
+                                'Content-Type': 'application/json'
+                            }
+                        });
+                        const startData = await startResponse.json();
+                        
+                        if (startResponse.ok) {
+                            localStorage.setItem('game_id', startData.game_id);
+                            // Redirect to game page
+                            window.location.href = 'game.html';
+                        } else {
+                            showError('Failed to start game: ' + (startData.detail || 'Unknown error'));
+                        }
+                    } catch (error) {
+                        showError('Failed to start game. Please try again.');
+                    }
+                } else {
+                    // Show error message
+                    showError(data.detail || 'Invalid username or password');
+                    document.getElementById('password').value = '';
+                }
+            } catch (error) {
+                showError('Unable to connect to the server. Please try again later.');
+            } finally {
+                // Reset button state
+                submitBtn.textContent = 'Login';
+                submitBtn.disabled = false;
+            }
+        }
+
+        // Form submission handler
+        document.getElementById('userLoginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            UserLogin();
+        });
+
+        // Error display function
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                errorDiv.style.opacity = '0';
+                setTimeout(() => {
+                    errorDiv.style.display = 'none';
+                    errorDiv.style.opacity = '1';
+                }, 300);
+            }, 5000);
+        }
+
+        // Add focus effects to form inputs
+        document.querySelectorAll('.form-input').forEach(input => {
+            input.addEventListener('focus', function() {
+                this.parentElement.style.transform = 'scale(1.02)';
+            });
+            
+            input.addEventListener('blur', function() {
+                this.parentElement.style.transform = 'scale(1)';
+            });
+        });
+    </script>
+</body>
+</html>

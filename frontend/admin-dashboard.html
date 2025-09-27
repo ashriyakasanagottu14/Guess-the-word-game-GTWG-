@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - GTW Game</title>
+    <link rel="stylesheet" href="styles.css">
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Admin Dashboard - GTW Game</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link rel="stylesheet" href="styles.css">
+        <style>
+            .admin-container {
+                max-width: 800px;
+                margin: 50px auto;
+                padding: 2rem;
+                background-color: #fff;
+                border-radius: 15px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                text-align: center;
+            }
+            .admin-icon {
+                font-size: 3rem;
+                margin-bottom: 1rem;
+            }
+            .admin-title {
+                color: #8b7355;
+                margin-bottom: 2rem;
+                font-size: 2.5rem;
+            }
+            .action-buttons {
+                display: flex;
+                justify-content: center;
+                gap: 1.5rem;
+                margin: 2rem 0;
+            }
+            .action-btn {
+                padding: 1rem 2rem;
+                font-size: 1.1rem;
+                border: none;
+                border-radius: 8px;
+                background-color: #deb887;
+                color: white;
+                cursor: pointer;
+                transition: all 0.3s ease;
+            }
+            .action-btn:hover {
+                background-color: #cd853f;
+                transform: translateY(-2px);
+            }
+            .form-section {
+                margin-top: 1.5rem;
+                display: none;
+            }
+            .form-section.active {
+                display: block;
+            }
+            .form-label {
+                display: block;
+                margin-bottom: 0.5rem;
+                color: #8b7355;
+                font-weight: bold;
+            }
+            .form-input {
+                width: 100%;
+                padding: 0.8rem;
+                border: 2px solid #deb887;
+                border-radius: 6px;
+                font-size: 1.1rem;
+            }
+            .form-input:focus {
+                outline: none;
+                border-color: #cd853f;
+            }
+            .submit-btn {
+                width: 100%;
+                padding: 1rem;
+                background-color: #deb887;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                font-size: 1.1rem;
+                cursor: pointer;
+                transition: background-color 0.3s ease;
+            }
+            .submit-btn:hover {
+                background-color: #cd853f;
+            }
+            .empty-list {
+                margin-top: 1.5rem;
+                color: #aaa;
+                font-style: italic;
+            }
+            .back-link {
+                color: #8b7355;
+                text-decoration: none;
+                display: inline-block;
+                margin-top: 2rem;
+                transition: color 0.3s ease;
+            }
+            .back-link:hover {
+                color: #cd853f;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="admin-container position-relative">
+            <div class="admin-icon">📊</div>
+            <h1 class="admin-title">Admin Dashboard</h1>
+            <div class="action-buttons">
+                <button class="action-btn" id="btnDay">Report of a Day</button>
+                <button class="action-btn" id="btnUser">Report of a User</button>
+            </div>
+
+            <div id="daySection" class="form-section">
+                <form id="dayForm">
+                    <label class="form-label" for="reportDay">Enter Day (YYYY-MM-DD):</label>
+                    <input class="form-input" type="date" id="reportDay" name="reportDay" required />
+                    <button class="submit-btn" type="submit">Show Report</button>
+                </form>
+                <div id="dayReportResult">
+                    <!-- Placeholder for day report -->
+                    <div class="empty-list">No data to display.</div>
+                </div>
+            </div>
+
+            <div id="userSection" class="form-section">
+                <form id="userForm">
+                    <label class="form-label" for="userId">Enter User ID:</label>
+                    <input class="form-input" type="text" id="userId" name="userId" required />
+                    <button class="submit-btn" type="submit">Show Report</button>
+                </form>
+                <div id="userReportResult">
+                    <!-- Placeholder for user report -->
+                    <div class="empty-list">No data to display.</div>
+                </div>
+            </div>
+
+            <a href="admin-menu.html" class="back-link">← Back to Menu</a>
+        </div>
+        <script>
+        // Logout button logic
+        // Get references
+        const btnDay = document.getElementById('btnDay');
+        const btnUser = document.getElementById('btnUser');
+        const daySection = document.getElementById('daySection');
+        const userSection = document.getElementById('userSection');
+
+        // Hide both forms initially
+        daySection.classList.remove('active');
+        userSection.classList.remove('active');
+
+        btnDay.onclick = function() {
+            daySection.classList.add('active');
+            userSection.classList.remove('active');
+        };
+        btnUser.onclick = function() {
+            userSection.classList.add('active');
+            daySection.classList.remove('active');
+        };
+
+        // Prevent form submission from reloading the page
+        document.getElementById('dayForm').onsubmit = async function(e) {
+            e.preventDefault();
+            const resultDiv = document.getElementById('dayReportResult');
+            const date = document.getElementById('reportDay').value;
+            if (!date) {
+                resultDiv.innerHTML = '<div class="empty-list">Please select a date.</div>';
+                return;
+            }
+            resultDiv.innerHTML = '<div class="empty-list">Loading...</div>';
+                try {
+                    const response = await fetch(`http://localhost:8000/api/v1/admin/report/daily?date=${date}`);
+                    if (!response.ok) throw new Error('Failed to fetch report');
+                    const data = await response.json();
+                    // Example: { num_users: 10, num_correct: 25 }
+                    resultDiv.innerHTML = `<div style="margin-top:1.5rem;text-align:left;">
+                        <strong>Number of users:</strong> <span id="numUsers">${data.num_users ?? '-'}</span><br>
+                        <strong>Number of correct guesses:</strong> <span id="numCorrect">${data.num_correct ?? '-'}</span>
+                    </div>`;
+                } catch (err) {
+                    resultDiv.innerHTML = `<div class="empty-list">Error: ${err.message}</div>`;
+            }
+        };
+
+        document.getElementById('userForm').onsubmit = async function(e) {
+            e.preventDefault();
+            const resultDiv = document.getElementById('userReportResult');
+            const userId = document.getElementById('userId').value.trim();
+            if (!userId) {
+                resultDiv.innerHTML = '<div class="empty-list">Please enter a user ID.</div>';
+                return;
+            }
+            resultDiv.innerHTML = '<div class="empty-list">Loading...</div>';
+            try {
+                const response = await fetch(`http://localhost:8000/api/v1/admin/report/user/${encodeURIComponent(userId)}`);
+                let data = null;
+                let errorText = '';
+                try { data = await response.json(); } catch (e) { errorText = await response.text(); }
+                if (!response.ok) {
+                    let msg = (data && data.detail) ? data.detail : errorText || response.statusText || 'Failed to fetch report';
+                    throw new Error(msg);
+                }
+                if (!Array.isArray(data) || data.length === 0) {
+                    resultDiv.innerHTML = '<div class="empty-list">No data to display.</div>';
+                    return;
+                }
+                let rows = data.map(row => `<tr><td>${row.date ?? '-'}</td><td>${row.words_tried ?? '-'}</td><td>${row.correct_guesses ?? '-'}</td></tr>`).join('');
+                resultDiv.innerHTML = `<div style="margin-top:1.5rem;">
+                    <table style="width:100%;border-collapse:collapse;">
+                        <thead>
+                            <tr style="background:#f3f3f3;">
+                                <th style="padding:6px;border:1px solid #ddd;">Date</th>
+                                <th style="padding:6px;border:1px solid #ddd;">Words Tried</th>
+                                <th style="padding:6px;border:1px solid #ddd;">Correct Guesses</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </div>`;
+            } catch (err) {
+                resultDiv.innerHTML = `<div class="empty-list">Error: ${err.message}</div>`;
+            }
+        };
+        </script>
+</body>
+</html>

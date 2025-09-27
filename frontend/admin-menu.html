@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Menu - GTW Game</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .admin-menu-container {
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 2rem;
+            background-color: #fff;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .admin-menu-title {
+            color: #8b7355;
+            margin-bottom: 2rem;
+            font-size: 2.5rem;
+        }
+
+        .admin-menu-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .menu-btn {
+            padding: 1.5rem;
+            font-size: 1.2rem;
+            border: none;
+            border-radius: 10px;
+            background-color: #deb887;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .menu-btn:hover {
+            background-color: #cd853f;
+            transform: translateY(-3px);
+        }
+
+        .menu-btn i {
+            font-size: 1.4rem;
+        }
+
+        .admin-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .back-link {
+            color: #8b7355;
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 2rem;
+            transition: color 0.3s ease;
+        }
+
+        .back-link:hover {
+            color: #cd853f;
+        }
+
+        .decorative-element {
+            position: fixed;
+            width: 200px;
+            height: 200px;
+            background-color: rgba(222, 184, 135, 0.1);
+            border-radius: 50%;
+            z-index: -1;
+        }
+
+        .element-1 {
+            top: -50px;
+            left: -50px;
+        }
+
+        .element-2 {
+            bottom: -50px;
+            right: -50px;
+        }
+    </style>
+</head>
+<body>
+    <div class="decorative-element element-1"></div>
+    <div class="decorative-element element-2"></div>
+
+    <div class="admin-menu-container position-relative">
+        <div class="admin-icon">👨‍💼</div>
+        <h1 class="admin-menu-title">Admin Menu</h1>
+        
+        <div class="admin-menu-buttons">
+            <button onclick="location.href='admin-dashboard.html'" class="menu-btn">
+                👥 Users Data
+            </button>
+            <button onclick="location.href='words-dashboard.html'" class="menu-btn">
+                📝 Words Data
+            </button>
+        </div>
+        
+        <a href="index.html" class="back-link">← Back to Home</a>
+    </div>
+
+
+    <script>
+        // Check if admin is logged in
+        if (!localStorage.getItem('adminLoggedIn')) {
+            alert('Access denied. Please login as admin first.');
+            window.location.href = 'admin-login.html';
+        }
+    </script>
+</body>
+</html>
