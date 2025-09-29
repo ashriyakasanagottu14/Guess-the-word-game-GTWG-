@@ -48,7 +48,11 @@ async def on_startup():
         await ensure_indexes()
         await seed_initial_words()
         await ensure_default_admin()  # Ensure default admin user exists
-        logger.info("✅ Startup complete")
+        logger.info("Startup tasks completed.")
     except Exception as e:
-        logger.error(f"❌ Startup failed: {e}")
-        raise
+        logger.error(f"An error occurred during startup: {e}")
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)

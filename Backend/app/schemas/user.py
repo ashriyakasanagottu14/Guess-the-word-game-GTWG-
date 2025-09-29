@@ -6,6 +6,6 @@ class UserOut(BaseModel):
     id: str
     username: str
     role: str
-    email: str
+    email: str | None = None
     created_at: datetime
     last_login_at: datetime | None = None

@@ -14,6 +14,7 @@ class StartGameResponse(BaseModel):
 class GuessRequest(BaseModel):
     game_id: str
     guess: str
+    target_word: str
 
 
 class GuessEntry(BaseModel):

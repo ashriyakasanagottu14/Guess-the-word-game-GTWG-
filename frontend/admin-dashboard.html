@@ -4,17 +4,49 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - GTW Game</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Admin Dashboard - GTW Game</title>
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-        <link rel="stylesheet" href="styles.css">
-        <style>
-            .admin-container {
+    <style>
+        body {
+            padding-top: 70px; /* Add padding to body to account for fixed header */
+        }
+        
+        .header {
+            background-color: #8b7355;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+        }
+
+        .header-title {
+            color: white;
+            margin: 0;
+            font-size: 1.5rem;
+        }
+
+        .logout-btn {
+            background-color: #deb887;
+            color: white;
+            border: none;
+            padding: 0.5rem 1.5rem;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .logout-btn:hover {
+            background-color: #cd853f;
+        }
+
+        .admin-container {
+            margin-top: 100px;  /* Added to account for fixed header */
                 max-width: 800px;
                 margin: 50px auto;
                 padding: 2rem;
@@ -130,8 +162,24 @@
 
             <div id="userSection" class="form-section">
                 <form id="userForm">
-                    <label class="form-label" for="userId">Enter User ID:</label>
-                    <input class="form-input" type="text" id="userId" name="userId" required />
+                    <div style="margin-bottom: 20px;">
+                        <label class="form-label" for="userId">Select User:</label>
+                        <select class="form-input" id="userId" name="userId" required>
+                            <option value="">Loading users...</option>
+                        </select>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                        <div>
+                            <label class="form-label" for="fromDate">From Date:</label>
+                            <input type="date" class="form-input" id="fromDate" name="fromDate" required>
+                        </div>
+                        <div>
+                            <label class="form-label" for="toDate">To Date:</label>
+                            <input type="date" class="form-input" id="toDate" name="toDate" required>
+                        </div>
+                    </div>
+                    
                     <button class="submit-btn" type="submit">Show Report</button>
                 </form>
                 <div id="userReportResult">
@@ -158,9 +206,33 @@
             daySection.classList.add('active');
             userSection.classList.remove('active');
         };
-        btnUser.onclick = function() {
+        btnUser.onclick = async function() {
             userSection.classList.add('active');
             daySection.classList.remove('active');
+
+            const adminToken = localStorage.getItem('adminToken');
+            if (!adminToken) {
+                window.location.href = 'admin-login.html';
+                return;
+            }
+
+            // Load users list
+            try {
+                const response = await fetch('http://localhost:8000/api/v1/admin/users', {
+                    headers: {
+                        'Authorization': `Bearer ${adminToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                if (!response.ok) throw new Error('Failed to fetch users');
+                const users = await response.json();
+                const select = document.getElementById('userId');
+                select.innerHTML = '<option value="">Select a user...</option>' +
+                    users.map(user => `<option value="${user.id}">${user.username}</option>`).join('');
+            } catch (err) {
+                console.error('Error loading users:', err);
+                document.getElementById('userId').innerHTML = '<option value="">Error loading users</option>';
+            }
         };
 
         // Prevent form submission from reloading the page
@@ -168,19 +240,42 @@
             e.preventDefault();
             const resultDiv = document.getElementById('dayReportResult');
             const date = document.getElementById('reportDay').value;
+            const adminToken = localStorage.getItem('adminToken');
+
+            if (!adminToken) {
+                window.location.href = 'admin-login.html';
+                return;
+            }
+
             if (!date) {
                 resultDiv.innerHTML = '<div class="empty-list">Please select a date.</div>';
                 return;
             }
             resultDiv.innerHTML = '<div class="empty-list">Loading...</div>';
                 try {
-                    const response = await fetch(`http://localhost:8000/api/v1/admin/report/daily?date=${date}`);
+                    const response = await fetch(`http://localhost:8000/api/v1/admin/report/daily?date=${date}`, {
+                        headers: {
+                            'Authorization': `Bearer ${adminToken}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
                     if (!response.ok) throw new Error('Failed to fetch report');
                     const data = await response.json();
                     // Example: { num_users: 10, num_correct: 25 }
-                    resultDiv.innerHTML = `<div style="margin-top:1.5rem;text-align:left;">
-                        <strong>Number of users:</strong> <span id="numUsers">${data.num_users ?? '-'}</span><br>
-                        <strong>Number of correct guesses:</strong> <span id="numCorrect">${data.num_correct ?? '-'}</span>
+                    resultDiv.innerHTML = `
+                    <div style="margin-top:1.5rem; text-align:left; padding: 20px; background-color: #f8f9fa; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                        <div style="margin-bottom: 15px;">
+                            <div style="color: #495057; font-size: 1.1rem; margin-bottom: 5px;">Number of users:</div>
+                            <div style="color: #2c3e50; font-size: 1.8rem; font-weight: bold; padding: 10px; background-color: #e9ecef; border-radius: 5px; display: inline-block; min-width: 80px; text-align: center;">
+                                ${data.user_count ?? '0'}
+                            </div>
+                        </div>
+                        <div style="margin-top: 20px;">
+                            <div style="color: #495057; font-size: 1.1rem; margin-bottom: 5px;">Number of correct guesses:</div>
+                            <div style="color: #27ae60; font-size: 1.8rem; font-weight: bold; padding: 10px; background-color: #e8f6ef; border-radius: 5px; display: inline-block; min-width: 80px; text-align: center;">
+                                ${data.correct_guess_count ?? '0'}
+                            </div>
+                        </div>
                     </div>`;
                 } catch (err) {
                     resultDiv.innerHTML = `<div class="empty-list">Error: ${err.message}</div>`;
@@ -190,36 +285,71 @@
         document.getElementById('userForm').onsubmit = async function(e) {
             e.preventDefault();
             const resultDiv = document.getElementById('userReportResult');
-            const userId = document.getElementById('userId').value.trim();
+            const select = document.getElementById('userId');
+            const userId = select.value;
+            const username = select.options[select.selectedIndex].text;
+            const fromDate = document.getElementById('fromDate').value;
+            const toDate = document.getElementById('toDate').value;
+
             if (!userId) {
-                resultDiv.innerHTML = '<div class="empty-list">Please enter a user ID.</div>';
+                resultDiv.innerHTML = '<div class="empty-list">Please select a user.</div>';
                 return;
             }
+
+            if (!fromDate || !toDate) {
+                resultDiv.innerHTML = '<div class="empty-list">Please select both from and to dates.</div>';
+                return;
+            }
+
+            if (new Date(fromDate) > new Date(toDate)) {
+                resultDiv.innerHTML = '<div class="empty-list">From date cannot be later than to date.</div>';
+                return;
+            }
+
+            const adminToken = localStorage.getItem('adminToken');
+            if (!adminToken) {
+                window.location.href = 'admin-login.html';
+                return;
+            }
+
             resultDiv.innerHTML = '<div class="empty-list">Loading...</div>';
             try {
-                const response = await fetch(`http://localhost:8000/api/v1/admin/report/user/${encodeURIComponent(userId)}`);
-                let data = null;
-                let errorText = '';
-                try { data = await response.json(); } catch (e) { errorText = await response.text(); }
+                const response = await fetch(`http://localhost:8000/api/v1/admin/report/user/${encodeURIComponent(userId)}?from_date=${fromDate}&to_date=${toDate}`, {
+                    headers: {
+                        'Authorization': `Bearer ${adminToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const data = await response.json();
+                
                 if (!response.ok) {
-                    let msg = (data && data.detail) ? data.detail : errorText || response.statusText || 'Failed to fetch report';
-                    throw new Error(msg);
+                    throw new Error(data.detail || 'Failed to fetch report');
                 }
-                if (!Array.isArray(data) || data.length === 0) {
-                    resultDiv.innerHTML = '<div class="empty-list">No data to display.</div>';
-                    return;
-                }
-                let rows = data.map(row => `<tr><td>${row.date ?? '-'}</td><td>${row.words_tried ?? '-'}</td><td>${row.correct_guesses ?? '-'}</td></tr>`).join('');
-                resultDiv.innerHTML = `<div style="margin-top:1.5rem;">
-                    <table style="width:100%;border-collapse:collapse;">
+
+                resultDiv.innerHTML = `
+                <div style="margin-top:1.5rem; padding: 20px; background-color: #f8f9fa; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <h3 style="color: #deb887; margin-bottom: 20px;">${username}'s Statistics</h3>
+                    <table style="width:100%; border-collapse:collapse; background-color: white; border-radius: 5px; overflow: hidden;">
                         <thead>
-                            <tr style="background:#f3f3f3;">
-                                <th style="padding:6px;border:1px solid #ddd;">Date</th>
-                                <th style="padding:6px;border:1px solid #ddd;">Words Tried</th>
-                                <th style="padding:6px;border:1px solid #ddd;">Correct Guesses</th>
+                            <tr style="background-color: #deb887;">
+                                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6; color: white; font-weight: bold;">Date</th>
+                                <th style="padding: 12px; text-align: center; border-bottom: 2px solid #dee2e6; color: white; font-weight: bold;">Words Tried</th>
+                                <th style="padding: 12px; text-align: center; border-bottom: 2px solid #dee2e6; color: white; font-weight: bold;">Correct Guesses</th>
                             </tr>
                         </thead>
-                        <tbody>${rows}</tbody>
+                        <tbody>
+                            ${data.stats ? data.stats.map(stat => `
+                                <tr>
+                                    <td style="padding: 12px; border-bottom: 1px solid #dee2e6; color: #deb887;">${new Date(stat.date).toLocaleDateString()}</td>
+                                    <td style="padding: 12px; text-align: center; border-bottom: 1px solid #dee2e6; font-weight: bold; color: #deb887;">${stat.words_tried || 0}</td>
+                                    <td style="padding: 12px; text-align: center; border-bottom: 1px solid #dee2e6; font-weight: bold; color: #deb887;">${stat.correct_guesses || 0}</td>
+                                </tr>
+                            `).join('') : `
+                                <tr>
+                                    <td colspan="3" style="padding: 12px; text-align: center; border-bottom: 1px solid #dee2e6; color: #deb887;">No data available for this date range</td>
+                                </tr>
+                            `}
+                        </tbody>
                     </table>
                 </div>`;
             } catch (err) {

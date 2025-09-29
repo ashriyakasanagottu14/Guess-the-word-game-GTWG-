@@ -139,6 +139,15 @@
         }
         
         // Start a new game
+        function showDailyLimit() {
+            document.querySelector('.game-container').classList.add('blurred');
+            document.getElementById('limitOverlay').style.display = 'flex';
+            // Disable keyboard inputs
+            document.querySelectorAll('.key').forEach(key => {
+                key.style.pointerEvents = 'none';
+            });
+        }
+
         async function startNewGame() {
             const token = localStorage.getItem('token');
             if (!token) {
@@ -154,9 +163,9 @@
                         'Content-Type': 'application/json'
                     }
                 });
-                console.log('Start game response status:', response.status);    
 
                 const data = await response.json();
+                
                 if (response.ok) {
                     localStorage.setItem('game_id', data.game_id);
                     
@@ -175,7 +184,15 @@
 
                     // Reset game state
                     gameOver = false;
-                    // guessedWords.length = 0;
+                    guessedWords.length = 0;
+
+                    // Enable keyboard if it was disabled
+                    document.querySelectorAll('.key').forEach(key => {
+                        key.style.pointerEvents = 'auto';
+                    });
+                } else if (response.status === 403) {
+                    showDailyLimit();
+                    return;
                 } else {
                     alert('Failed to start new game: ' + (data.detail || 'Unknown error'));
                 }
@@ -183,7 +200,6 @@
                 console.error('Error starting new game:', error);
                 alert('Failed to start new game. Please try again.');
             }
-            gameOver = false;
             
             // Hide game over modal
             hideGameOverModal();
@@ -295,7 +311,8 @@
                     },
                     body: JSON.stringify({
                         game_id: gameId,
-                        guess: guess
+                        guess: guess,
+                        target_word: targetWord
                     })
                 });
 

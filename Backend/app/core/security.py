@@ -25,12 +25,8 @@ def create_access_token(subject: str, username: str, role: str, expires_minutes:
     return jwt.encode(to_encode, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
 
 
-def get_token_from_header(request: Request = None) -> Optional[str]:
+def get_token_from_header(request: Request) -> Optional[str]:
     """Extract token from the Authorization header."""
-    if not request:
-        from fastapi import Request
-        request = Request(scope={"type": "http"})
-    
     authorization = request.headers.get("Authorization")
     scheme, token = get_authorization_scheme_param(authorization)
     if not authorization or scheme.lower() != "bearer":

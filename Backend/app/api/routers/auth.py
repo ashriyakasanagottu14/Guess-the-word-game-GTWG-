@@ -1,18 +1,108 @@
-from datetime import datetime, timezone
-from fastapi import APIRouter, HTTPException, Depends
+from datetime import datetime, timezone, timedelta
+from fastapi import APIRouter, HTTPException, Depends, status
 from bson import ObjectId
+import random
+import string
 
 
 from app.core.security import get_password_hash, verify_password, create_access_token
 from app.core.roles import PLAYER
 from app.core.auth import current_user
 from app.db.mongodb import get_database
-from app.schemas.auth import RegisterRequest, LoginRequest, TokenResponse
+from app.schemas.auth import (
+    RegisterRequest,
+    LoginRequest,
+    TokenResponse,
+    ForgotPasswordRequest,
+    ResetPasswordRequest,
+)
 from app.schemas.user import UserOut
 from app.utils.validators import validate_username, validate_password
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 db = get_database()
+
+
+@router.post("/forgot-password")
+async def forgot_password(payload: ForgotPasswordRequest):
+    """
+    Initiate password reset process.
+    """
+    db = await get_database()
+    user = await db.users.find_one({"email": payload.email})
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User with this email does not exist.",
+        )
+
+    # Generate a 6-digit OTP
+    otp = "".join(random.choices(string.digits, k=6))
+    otp_hash = get_password_hash(otp)
+    otp_expiry = datetime.now(timezone.utc) + timedelta(minutes=10)  # OTP valid for 10 minutes
+
+    await db.users.update_one(
+        {"_id": user["_id"]},
+        {"$set": {"reset_otp_hash": otp_hash, "reset_otp_expiry": otp_expiry}},
+    )
+
+    # In a real application, you would send the OTP via email here.
+    # For this example, we will return it in the response for testing.
+    print(f"Generated OTP for {payload.email}: {otp}")
+
+    return {
+        "message": "An OTP has been sent to your email address.",
+        "otp_for_testing": otp,  # For development/testing purposes
+    }
+
+
+@router.post("/reset-password")
+async def reset_password(payload: ResetPasswordRequest):
+    """
+    Reset user's password using OTP.
+    """
+    db = await get_database()
+    user = await db.users.find_one({"email": payload.email})
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found.",
+        )
+
+    reset_otp_hash = user.get("reset_otp_hash")
+    reset_otp_expiry = user.get("reset_otp_expiry")
+
+    if not reset_otp_hash or not reset_otp_expiry:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password reset was not requested.",
+        )
+
+    if datetime.now(timezone.utc) > reset_otp_expiry.replace(tzinfo=timezone.utc):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="OTP has expired.",
+        )
+
+    if not verify_password(payload.otp, reset_otp_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid OTP.",
+        )
+
+    validate_password(payload.new_password)
+    new_password_hash = get_password_hash(payload.new_password)
+
+    await db.users.update_one(
+        {"_id": user["_id"]},
+        {
+            "$set": {"hashed_password": new_password_hash},
+            "$unset": {"reset_otp_hash": "", "reset_otp_expiry": ""},
+        },
+    )
+
+    return {"message": "Password has been reset successfully."}
 
 
 @router.post("/register", response_model=UserOut, status_code=201)

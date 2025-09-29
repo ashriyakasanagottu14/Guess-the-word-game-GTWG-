@@ -1,5 +1,5 @@
 # Standard library imports
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import List, Optional
 
 # Third-party imports
@@ -15,10 +15,28 @@ from app.db.mongodb import get_database
 from app.schemas.token import Token
 from app.core.config import settings
 from app.schemas.report import DailyReport, UserReport, UserDailyStat
+from app.schemas.user import UserOut
 from app.core.auth import require_role
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
+
+@router.get("/users", response_model=List[UserOut], dependencies=[Depends(require_role(ADMIN))])
+async def get_users_list():
+    """
+    Get a list of all users.
+    """
+    db = await get_database()
+    users = await db.users.find({"role": "PLAYER"}).to_list(length=None)   
+    print('users',users)
+    return [UserOut(
+        id=str(user["_id"]),
+        username=user["username"],
+        email=user.get("email"),
+        role=user.get("role"),
+        created_at=user.get("created_at"),
+        last_login_at=user.get("last_login_at")
+    ) for user in users]
 
 
 @router.post("/login", response_model=Token)
@@ -76,6 +94,8 @@ async def daily_report(date: str):
 
 @router.get("/report/user/{user_id}", response_model=UserReport, dependencies=[Depends(require_role(ADMIN))])
 async def user_report(user_id: str, from_date: str, to_date: str):
+    db = await get_database()
+
     from_day = datetime.fromisoformat(from_date).replace(tzinfo=timezone.utc)
     to_day = datetime.fromisoformat(to_date).replace(tzinfo=timezone.utc)
 
