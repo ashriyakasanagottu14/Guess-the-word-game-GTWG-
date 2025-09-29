@@ -130,6 +130,12 @@
     <div class="decorative-element element-1"></div>
     <div class="decorative-element element-2"></div>
 
+    <!-- Header with Logout Button -->
+    <div class="header">
+        <h1 class="header-title">Admin Panel</h1>
+        <button class="logout-btn" onclick="handleAdminLogout()">Logout</button>
+    </div>
+
     <div class="admin-menu-container position-relative">
         <div class="admin-icon">👨‍💼</div>
         <h1 class="admin-menu-title">Admin Menu</h1>
@@ -152,6 +158,12 @@
         if (!localStorage.getItem('adminLoggedIn')) {
             alert('Access denied. Please login as admin first.');
             window.location.href = 'admin-login.html';
+        }
+
+        // Handle admin logout
+        function handleAdminLogout() {
+            localStorage.clear(); // Clear all admin data
+            window.location.href = 'index.html';
         }
     </script>
 </body>

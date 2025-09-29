@@ -92,6 +92,18 @@
         </div>
     </div>
 
+    <!-- Daily Limit Exceeded Modal -->
+    <div class="game-over-overlay" id="limitExceededOverlay" style="display: none;">
+        <div class="game-over-modal">
+            <div class="game-over-content">
+                <h2 style="color: #ff6b6b;">🚫 Daily Limit Exceeded</h2>
+                <p style="font-size: 1.2rem; margin: 20px 0;">Your daily game limit has been reached.</p>
+                <p style="font-size: 1rem; color: #666; margin-bottom: 30px;">Please come back tomorrow to play again!</p>
+                <button class="btn" onclick="handleLimitExceededLogout()" style="background: #ff6b6b; color: white; padding: 12px 30px; font-size: 1.1rem;">Logout</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Game Script -->
     <script>
         // Word list from actual.py
@@ -107,6 +119,7 @@
         let gameOver = false;
         let maxAttempts = 5;
         let targetWord = '';
+        let guessedWords = []; // Add missing variable
         
         // Game logic from actual.py
         function getFeedback(guess, target) {
@@ -170,7 +183,6 @@
                     localStorage.setItem('game_id', data.game_id);
                     
                     targetWord = WORDS[Math.floor(Math.random() * WORDS.length)];
-                    console.log('Target word:', targetWord); // For testing
                     
                     currentRow = 0;
                     currentTile = 0;
@@ -194,11 +206,16 @@
                     showDailyLimit();
                     return;
                 } else {
-                    alert('Failed to start new game: ' + (data.detail || 'Unknown error'));
+                    if (response.status === 429) {
+                        showLimitExceededModal();
+                    } else {
+                        showMessage('Failed to start new game: ' + (data.detail || 'Unknown error'), 'error');
+                    }
+                    return; // Don't continue with game initialization
                 }
             } catch (error) {
-                console.error('Error starting new game:', error);
-                alert('Failed to start new game. Please try again.');
+                showMessage('Failed to start new game. Please try again.', 'error');
+                return; // Don't continue with game initialization
             }
             
             // Hide game over modal
@@ -255,7 +272,8 @@
                     currentTile++;
                     // Enable submit button when 5 letters are typed
                     if (currentTile === 5) {
-                        document.querySelector('.key.wide.submit').classList.add('active');
+                        const submitBtn = document.querySelector('.key.wide.submit');
+                        if (submitBtn) submitBtn.classList.add('active');
                     }
                 }
             }
@@ -268,7 +286,8 @@
                     tile.className = 'tile';
                 }
                 // Disable submit button when less than 5 letters
-                document.querySelector('.key.wide.submit').classList.remove('active');
+                const submitBtn = document.querySelector('.key.wide.submit');
+                if (submitBtn) submitBtn.classList.remove('active');
             }
             // Handle enter/submit
             else if (key === 'Enter' && currentTile === 5) {
@@ -425,6 +444,20 @@
                 overlay.style.display = 'none';
             }
         }
+
+        // Show limit exceeded modal
+        function showLimitExceededModal() {
+            const overlay = document.getElementById('limitExceededOverlay');
+            if (overlay) {
+                overlay.style.display = 'flex';
+            }
+        }
+
+        // Handle logout when limit exceeded
+        function handleLimitExceededLogout() {
+            localStorage.clear(); // Clear all user data
+            window.location.href = 'user-login.html';
+        }
         
         // Shake the current row to indicate an invalid word
         function shakeRow(rowIndex) {
@@ -482,6 +515,17 @@
                 background-color: #787c7e !important;
                 color: white !important;
                 border-color: #787c7e !important;
+            }
+            
+            .key.submit:not(.active) {
+                opacity: 0.5 !important;
+                cursor: not-allowed !important;
+                background-color: #ccc !important;
+            }
+            
+            .key.submit.active {
+                opacity: 1 !important;
+                cursor: pointer !important;
             }
         `;
         document.head.appendChild(style);
@@ -541,11 +585,14 @@
                             key.classList.remove('active');
                         }, 200);
                     } else if (key.id === 'submit') {
-                        handleKeyPress('Enter');
-                        key.classList.add('active');
-                        setTimeout(() => {
-                            key.classList.remove('active');
-                        }, 200);
+                        // Only allow submit if 5 letters are filled
+                        if (currentTile === 5) {
+                            handleKeyPress('Enter');
+                            key.classList.add('active');
+                            setTimeout(() => {
+                                key.classList.remove('active');
+                            }, 200);
+                        }
                     } else if (key.id === 'backspace') {
                         handleKeyPress('Backspace');
                         key.classList.add('active');
@@ -568,16 +615,22 @@
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     handleKeyPress('Enter');
-                    document.querySelector('.key.wide.submit').classList.add('active');
-                    setTimeout(() => {
-                        document.querySelector('.key.wide.submit').classList.remove('active');
-                    }, 200);
+                    const submitBtn = document.querySelector('.key.wide.submit');
+                    if (submitBtn) {
+                        submitBtn.classList.add('active');
+                        setTimeout(() => {
+                            submitBtn.classList.remove('active');
+                        }, 200);
+                    }
                 } else if (e.key === 'Backspace') {
                     handleKeyPress('Backspace');
-                    document.getElementById('backspace').classList.add('active');
-                    setTimeout(() => {
-                        document.getElementById('backspace').classList.remove('active');
-                    }, 200);
+                    const backspaceBtn = document.getElementById('backspace');
+                    if (backspaceBtn) {
+                        backspaceBtn.classList.add('active');
+                        setTimeout(() => {
+                            backspaceBtn.classList.remove('active');
+                        }, 200);
+                    }
                 } else if (/^[a-zA-Z]$/.test(e.key)) {
                     handleKeyPress(e.key.toUpperCase());
                     const keyElement = document.querySelector(`.key[data-key="${e.key.toLowerCase()}"]`);

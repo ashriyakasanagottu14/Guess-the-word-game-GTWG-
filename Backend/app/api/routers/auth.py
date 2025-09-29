@@ -18,6 +18,7 @@ from app.schemas.auth import (
 )
 from app.schemas.user import UserOut
 from app.utils.validators import validate_username, validate_password
+from app.utils.email import email_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 db = get_database()
@@ -46,13 +47,23 @@ async def forgot_password(payload: ForgotPasswordRequest):
         {"$set": {"reset_otp_hash": otp_hash, "reset_otp_expiry": otp_expiry}},
     )
 
-    # In a real application, you would send the OTP via email here.
-    # For this example, we will return it in the response for testing.
-    print(f"Generated OTP for {payload.email}: {otp}")
+    # Send OTP via email
+    email_sent = await email_service.send_otp_email(
+        to_email=payload.email,
+        otp=otp,
+        username=user.get("username")
+    )
+
+    if not email_sent:
+        # If email fails, still log the OTP for development/testing
+        print(f"Email failed - Generated OTP for {payload.email}: {otp}")
+        return {
+            "message": "An OTP has been generated, but email delivery failed. Please check server logs.",
+            "otp_for_testing": otp,  # For development/testing purposes when email fails
+        }
 
     return {
         "message": "An OTP has been sent to your email address.",
-        "otp_for_testing": otp,  # For development/testing purposes
     }
 
 
@@ -97,7 +108,7 @@ async def reset_password(payload: ResetPasswordRequest):
     await db.users.update_one(
         {"_id": user["_id"]},
         {
-            "$set": {"hashed_password": new_password_hash},
+            "$set": {"password_hash": new_password_hash},
             "$unset": {"reset_otp_hash": "", "reset_otp_expiry": ""},
         },
     )
@@ -137,6 +148,7 @@ async def register(payload: RegisterRequest):
 async def login(payload: LoginRequest):
     db = await get_database()
     user = await db.users.find_one({"username": payload.username})
+    
     if not user or not verify_password(payload.password, user.get("password_hash", "")):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     await db.users.update_one({"_id": user["_id"]}, {"$set": {"last_login_at": datetime.now(timezone.utc)}})

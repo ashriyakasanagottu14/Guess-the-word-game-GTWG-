@@ -18,6 +18,14 @@ class Settings(BaseSettings):
     ADMIN_DEFAULT_USERNAME: str = Field(default="AdminUser")
     ADMIN_DEFAULT_PASSWORD: str = Field(default="Adm1n$*")
 
+    # Email Configuration
+    SMTP_HOST: str = Field(default="smtp.gmail.com")
+    SMTP_PORT: int = Field(default=587)
+    SMTP_USERNAME: str = Field(default="")
+    SMTP_PASSWORD: str = Field(default="")
+    SMTP_FROM_EMAIL: str = Field(default="")
+    SMTP_FROM_NAME: str = Field(default="Guess The Word Game")
+
 
     class Config:
         env_file = ".env"

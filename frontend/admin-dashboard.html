@@ -140,6 +140,12 @@
         </style>
     </head>
     <body>
+        <!-- Header with Logout Button -->
+        <div class="header">
+            <h1 class="header-title">Admin Dashboard</h1>
+            <button class="logout-btn" onclick="handleAdminLogout()">Logout</button>
+        </div>
+
         <div class="admin-container position-relative">
             <div class="admin-icon">📊</div>
             <h1 class="admin-title">Admin Dashboard</h1>
@@ -356,6 +362,12 @@
                 resultDiv.innerHTML = `<div class="empty-list">Error: ${err.message}</div>`;
             }
         };
+
+        // Handle admin logout
+        function handleAdminLogout() {
+            localStorage.clear(); // Clear all admin data
+            window.location.href = 'index.html';
+        }
         </script>
 </body>
 </html>
