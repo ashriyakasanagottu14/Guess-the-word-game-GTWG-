@@ -1,6 +1,6 @@
 # Guess The Word Game (Wordle Clone)
 
-A web-based word guessing game built with Flask and JavaScript.
+A web-based word guessing game built with FastAPI (Backend) and JavaScript (Frontend).
 
 ## Features
 
@@ -12,27 +12,71 @@ A web-based word guessing game built with Flask and JavaScript.
 - Interactive keyboard with visual feedback
 - 5 attempts to guess the word
 - Responsive design for mobile and desktop
+- Admin dashboard for game statistics
 
 ## Setup Instructions
 
-1. **Install Python dependencies:**
+### Prerequisites
+- Python 3.8+
+- Node.js 14+
+- MongoDB
+- pip (Python package manager)
+
+### Backend Setup
+1. Navigate to the backend directory:
+   ```bash
+   cd backend
+   ```
+
+2. Create and activate a virtual environment:
+   ```bash
+   # Windows
+   python -m venv venv
+   .\venv\Scripts\activate
+   
+   # macOS/Linux
+   python3 -m venv venv
+   source venv/bin/activate
+   ```
+
+3. Install Python dependencies:
    ```bash
    pip install -r requirements.txt
    ```
 
-2. **Run the Flask application:**
-   ```bash
-   python app.py
+4. Set up environment variables (create a `.env` file in the backend directory):
+   ```
+   MONGODB_URL=mongodb://localhost:27017/gtwg
+   SECRET_KEY=your-secret-key-here
+   ACCESS_TOKEN_EXPIRE_MINUTES=1440
    ```
 
-3. **Open your browser and navigate to:**
+5. Run the backend server:
+   ```bash
+   uvicorn app.main:app --reload
    ```
-   http://localhost:5000
+   The API will be available at `http://localhost:8000`
+
+### Frontend Setup
+1. Navigate to the frontend directory:
+   ```bash
+   cd frontend
    ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Start the development server:
+   ```bash
+   npm run dev
+   ```
+   The frontend will be available at `http://localhost:5173`
 
 ## How to Play
 
-1. Click "Start Game" or navigate to `/game`
+1. Open the game in your browser
 2. Type a 5-letter word using your keyboard or the on-screen keyboard
 3. Press Enter or click Submit to check your guess
 4. Use the color feedback to make your next guess:
@@ -41,19 +85,33 @@ A web-based word guessing game built with Flask and JavaScript.
    - Grey tiles show letters not in the word
 5. You have 5 attempts to guess the correct word
 
-## Game Logic
+## Admin Access
 
-The game uses the same logic as the original `actual.py` file:
-- Random word selection from a predefined list
-- Proper feedback calculation for each guess
-- Win/lose conditions based on attempts
+To access the admin dashboard:
+- **URL**: `/admin` (after starting the frontend)
+- **Default Admin Credentials**:
+  - **Email**: "admin_game"
+  - **Password**: "secretcode"
 
 ## Files Structure
 
-- `app.py` - Flask backend with game logic
-- `templates/game.html` - Game interface
-- `templates/index.html` - Home page
-- `actual.py` - Original game logic (reference)
-- `requirements.txt` - Python dependencies
+```
+backend/
+├── app/
+│   ├── api/
+│   │   └── routers/
+│   ├── core/
+│   ├── db/
+│   └── main.py
+frontend/
+├── public/
+├── src/
+└── package.json
+```
 
-Enjoy playing Guess The Word!
+## Contact
+Ashriya Kasanagottu - ashriyaksngtt@gmail.com  
+Project Link: [https://github.com/ashriyakasanagottu14/Guess-the-word-game-GTWG-](https://github.com/ashriyakasanagottu14/Guess-the-word-game-GTWG-)
+
+## License
+MIT License
