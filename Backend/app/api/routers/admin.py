@@ -86,8 +86,8 @@ async def daily_report(date: str):
     start = day.replace(hour=0, minute=0, second=0, microsecond=0)
     end = day.replace(hour=23, minute=59, second=59, microsecond=999999)
 
-    user_ids = await db.games.distinct("user_id", {"started_at": {"$gte": start, "$lte": end}})
-    won_count = await db.games.count_documents({"started_at": {"$gte": start, "$lte": end}, "status": "WON"})
+    user_ids = await db.completed_games.distinct("user_id", {"started_at": {"$gte": start, "$lte": end}})
+    won_count = await db.completed_games.count_documents({"started_at": {"$gte": start, "$lte": end}, "status": "WON"})
 
     return DailyReport(date=date, user_count=len(user_ids), correct_guess_count=won_count)
 
@@ -104,8 +104,8 @@ async def user_report(user_id: str, from_date: str, to_date: str):
     while day <= to_day:
         start = day.replace(hour=0, minute=0, second=0, microsecond=0)
         end = day.replace(hour=23, minute=59, second=59, microsecond=999999)
-        tried = await db.games.count_documents({"user_id": ObjectId(user_id), "started_at": {"$gte": start, "$lte": end}})
-        correct = await db.games.count_documents({"user_id": ObjectId(user_id), "started_at": {"$gte": start, "$lte": end}, "status": "WON"})
+        tried = await db.completed_games.count_documents({"user_id": ObjectId(user_id), "started_at": {"$gte": start, "$lte": end}})
+        correct = await db.completed_games.count_documents({"user_id": ObjectId(user_id), "started_at": {"$gte": start, "$lte": end}, "status": "WON"})
         stats.append(UserDailyStat(date=day.date().isoformat(), words_tried=tried, correct_guesses=correct))
         day = day + timedelta(days=1)
 
